@@ -9,8 +9,8 @@
 | ERD V1.2 consolidé | ✅ Réalisé |
 | ADR critiques | ✅ Préparés |
 | Gouvernance AGENTS.md | ✅ Préparée |
-| Initialisation dépôt local | ⏳ À faire |
-| Socle Laravel | ⏳ À faire |
+| Initialisation dépôt local | ✅ Réalisé |
+| Socle Laravel | ✅ Réalisé |
 | Identity / Organizations / RBAC | ⏳ Planifié |
 | Beneficiaries / KYC | ⏳ Planifié |
 | Campaigns | ⏳ Planifié |

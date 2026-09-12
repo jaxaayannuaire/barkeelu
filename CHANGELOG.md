@@ -4,6 +4,19 @@ Toutes les évolutions importantes du projet sont documentées ici.
 
 > Une fonctionnalité n'est présentée comme validée que lorsque son implémentation et ses tests correspondants ont été vérifiés.
 
+## 2026-09-12 — Bootstrap Laravel 13 minimal
+
+### Ajouté
+
+- bootstrap Laravel 13 dans `apps/api` selon l'architecture monorepo retenue ;
+- exécution réussie des tests du squelette Laravel ;
+- aucune migration métier Barkeelu créée ou exécutée.
+
+### Limites
+
+- PostgreSQL, Sanctum et Reverb ne sont pas configurés ;
+- aucune fonctionnalité métier ou financière n'est implémentée.
+
 ## 2026-09-12 — Conception pré-migrations
 
 ### Documentation

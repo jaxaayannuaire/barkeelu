@@ -21,6 +21,12 @@ Aucune fonctionnalité financière n'est considérée production-ready à ce sta
 
 ## Architecture
 
+Le monorepo réserve les emplacements suivants :
+
+- `apps/api` : application Laravel principale (API et SSR) ;
+- `apps/mobile` : emplacement réservé au futur client Flutter ;
+- futur document root : `apps/api/public`.
+
 Référence :
 
 ```text
