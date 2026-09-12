@@ -27,6 +27,14 @@ Le monorepo réserve les emplacements suivants :
 - `apps/mobile` : emplacement réservé au futur client Flutter ;
 - futur document root : `apps/api/public`.
 
+Le backend `apps/api` utilise PostgreSQL. L'API V1 fournit une sonde HTTP
+publique et une authentification minimale par jeton Laravel Sanctum :
+
+- `GET /api/v1/health` ;
+- `POST /api/v1/auth/token` ;
+- `GET /api/v1/auth/user` ;
+- `DELETE /api/v1/auth/token`.
+
 Référence :
 
 ```text

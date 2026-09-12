@@ -11,6 +11,9 @@
 | Gouvernance AGENTS.md | ✅ Préparée |
 | Initialisation dépôt local | ✅ Réalisé |
 | Socle Laravel | ✅ Réalisé |
+| PostgreSQL backend | ✅ Réalisé |
+| API /api/v1 de base | ✅ Réalisé |
+| Sanctum minimal | ✅ Réalisé |
 | Identity / Organizations / RBAC | ⏳ Planifié |
 | Beneficiaries / KYC | ⏳ Planifié |
 | Campaigns | ⏳ Planifié |

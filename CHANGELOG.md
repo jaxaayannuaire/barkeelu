@@ -4,6 +4,19 @@ Toutes les évolutions importantes du projet sont documentées ici.
 
 > Une fonctionnalité n'est présentée comme validée que lorsque son implémentation et ses tests correspondants ont été vérifiés.
 
+## 2026-09-12 — PostgreSQL et API V1 minimale
+
+### Ajouté
+
+- configuration PostgreSQL locale et migrations Laravel natives ;
+- migration Laravel Sanctum pour les jetons d'accès personnels ;
+- API versionnée `/api/v1` avec health check, émission, consultation et révocation du jeton courant ;
+- tests Feature exécutés sur la base PostgreSQL dédiée.
+
+### Limites
+
+- Redis, Reverb, RBAC et les domaines métier Barkeelu ne sont pas configurés dans cette recette.
+
 ## 2026-09-12 — Bootstrap Laravel 13 minimal
 
 ### Ajouté
