@@ -16,6 +16,7 @@ Aucune fonctionnalité financière n'est considérée production-ready à ce sta
 - Redis
 - Laravel Sanctum
 - Laravel Reverb
+- Redis (cache et queues)
 - API REST `/api/v1`
 - Flutter pour les clients mobiles/desktop
 
@@ -34,6 +35,11 @@ publique et une authentification minimale par jeton Laravel Sanctum :
 - `POST /api/v1/auth/token` ;
 - `GET /api/v1/auth/user` ;
 - `DELETE /api/v1/auth/token`.
+
+Redis est utilisé uniquement comme infrastructure de cache, de queue et de
+transport temps réel. PostgreSQL reste la source de vérité. Laravel Reverb est
+configuré pour le broadcasting technique ; aucune fonctionnalité métier
+Barkeelu Live n'est encore implémentée.
 
 Référence :
 

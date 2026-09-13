@@ -4,6 +4,23 @@ Toutes les évolutions importantes du projet sont documentées ici.
 
 > Une fonctionnalité n'est présentée comme validée que lorsque son implémentation et ses tests correspondants ont été vérifiés.
 
+## 2026-09-13 — Infrastructure Redis, queue et Reverb
+
+### Ajouté
+
+- configuration locale Redis via PhpRedis pour le cache et les queues Laravel ;
+- sonde Redis réelle avec clé dédiée, sans vidage de base Redis ;
+- job de diagnostic consommé par un worker Redis one-shot ;
+- Laravel Reverb et broadcasting technique avec événement de diagnostic non métier ;
+- tests d'infrastructure Redis, queue Redis et configuration Reverb ;
+- recette temporaire validée : événement → queue Redis → worker → Reverb.
+
+### Limites
+
+- PostgreSQL reste la source de vérité ; Redis et Reverb restent des composants de cache, transport et temps réel ;
+- aucun domaine métier Barkeelu, transactional outbox métier ou Barkeelu Live métier n'est implémenté ;
+- aucune souscription WebSocket par un client réel n'est validée dans cette recette.
+
 ## 2026-09-12 — PostgreSQL et API V1 minimale
 
 ### Ajouté
