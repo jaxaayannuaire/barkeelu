@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AuthTokenController;
 use App\Http\Controllers\Api\V1\BeneficiaryController;
+use App\Http\Controllers\Api\V1\CampaignController;
 use App\Http\Controllers\Api\V1\KycProfileController;
 use App\Http\Controllers\Api\V1\OrganizationController;
 use Illuminate\Support\Facades\Route;
@@ -12,7 +13,15 @@ Route::prefix('v1')->group(function (): void {
     Route::post('/auth/token', [AuthTokenController::class, 'store'])
         ->middleware('throttle:auth-token');
 
+    Route::get('campaigns', [CampaignController::class, 'index']);
+    Route::get('campaigns/by-slug/{slug}', [CampaignController::class, 'publicShow']);
+
     Route::middleware('auth:sanctum')->group(function (): void {
+        Route::get('me/campaigns', [CampaignController::class, 'mine']);
+        Route::post('campaigns', [CampaignController::class, 'store']);
+        Route::patch('manage/campaigns/{campaign}', [CampaignController::class, 'update']);
+        Route::post('manage/campaigns/{campaign}/submit', [CampaignController::class, 'submit']);
+        Route::post('manage/campaigns/{campaign}/review', [CampaignController::class, 'review']);
         Route::apiResource('organizations', OrganizationController::class)
             ->only(['index', 'store', 'show', 'update']);
 

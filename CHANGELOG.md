@@ -4,6 +4,22 @@ Toutes les évolutions importantes du projet sont documentées ici.
 
 > Une fonctionnalité n'est présentée comme validée que lorsque son implémentation et ses tests correspondants ont été vérifiés.
 
+## 2026-09-13 — Cœur Campaign
+
+### Ajouté
+
+- table PostgreSQL `campaigns`, owner User XOR Organization, bénéficiaire obligatoire et projections `BIGINT` ;
+- contraintes PostgreSQL de montants, projections, dates, unicité et clés étrangères ;
+- cycle de vie contrôlé, permissions owner et modération, API publique et API de gestion Sanctum ;
+- visibilités PUBLIC, UNLISTED et PRIVATE ; projections initialisées à zéro et non modifiables par API ;
+- tests PostgreSQL des contraintes, du workflow, de l'isolation et de la visibilité.
+
+### Limites
+
+- TARGETED reste réservé au futur domaine invitations ;
+- Program, Project, Category, Donation, Payment, Wave, Ledger, Refund, Payout et Barkeelu Live métier ne sont pas implémentés ;
+- les projections ne sont pas une source comptable ni un solde financier.
+
 ## 2026-09-13 — Bénéficiaires, représentants et KYC
 
 ### Ajouté

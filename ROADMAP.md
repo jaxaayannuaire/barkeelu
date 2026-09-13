@@ -19,7 +19,7 @@
 | Reverb infrastructure (broadcasting) | ✅ Réalisé |
 | Identity / Organizations / Platform RBAC | ✅ Réalisé |
 | Beneficiaries / Representatives / KYC | ✅ Réalisé |
-| Campaigns | ⏳ Planifié |
+| Campaign core | ✅ Réalisé |
 | Payment Wave | ⏳ Planifié |
 | Ledger | ⏳ Planifié |
 | Refund / Payout / Reconciliation | ⏳ Planifié |

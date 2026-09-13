@@ -48,8 +48,14 @@ les règles contextuelles d'organisation.
 
 Les bénéficiaires, représentants historisés et profils KYC sont disponibles en
 API. Les documents KYC sont enregistrés sur un disque privé dédié, avec empreinte
-SHA-256 et sans exposition des clés internes de stockage. Aucun domaine Campaign,
-Payment, Wave, Ledger ou autre domaine financier n'est implémenté.
+SHA-256 et sans exposition des clés internes de stockage. Aucun domaine Payment,
+Wave, Ledger ou autre domaine financier n'est implémenté.
+
+Le cœur Campaign est disponible : owner User ou Organization, bénéficiaire
+obligatoire, cycle de vie contrôlé et visibilités PUBLIC, UNLISTED et PRIVATE.
+Les projections sont non autoritatives et ne sont modifiables par aucune API.
+TARGETED, Program, Project, Category, Donation, Payment et Ledger restent hors
+du périmètre implémenté.
 
 Référence :
 
