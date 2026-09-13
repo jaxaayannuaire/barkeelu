@@ -4,58 +4,44 @@ Plateforme de fundraising, crowdfunding, dons, solidarité et impact social.
 
 ## Statut
 
-Projet en phase de conception technique et d'initialisation.
-
-Aucune fonctionnalité financière n'est considérée production-ready à ce stade.
+Projet en phase d'initialisation technique. Aucun flux d'encaissement, de
+paiement fournisseur, Wave, remboursement ou payout n'est production-ready.
 
 ## Stack cible
 
-- Laravel 13
-- PHP 8.3
-- PostgreSQL
-- Redis
-- Laravel Sanctum
-- Laravel Reverb
-- Redis (cache et queues)
-- API REST `/api/v1`
-- Flutter pour les clients mobiles/desktop
+- Laravel 13 ;
+- PHP 8.4 ;
+- PostgreSQL ;
+- Redis pour le cache, les queues et le transport temps réel ;
+- Laravel Sanctum ;
+- Laravel Reverb ;
+- API REST `/api/v1` ;
+- Flutter pour les futurs clients mobiles et desktop.
 
-## Architecture
+## Architecture disponible
 
-Le monorepo réserve les emplacements suivants :
-
-- `apps/api` : application Laravel principale (API et SSR) ;
-- `apps/mobile` : emplacement réservé au futur client Flutter ;
-- futur document root : `apps/api/public`.
-
-Le backend `apps/api` utilise PostgreSQL. L'API V1 fournit une sonde HTTP
-publique et une authentification minimale par jeton Laravel Sanctum :
-
-- `GET /api/v1/health` ;
-- `POST /api/v1/auth/token` ;
-- `GET /api/v1/auth/user` ;
-- `DELETE /api/v1/auth/token`.
-
-Redis est utilisé uniquement comme infrastructure de cache, de queue et de
-transport temps réel. PostgreSQL reste la source de vérité. Laravel Reverb est
-configuré pour le broadcasting technique ; aucune fonctionnalité métier
-Barkeelu Live n'est encore implémentée.
+Le backend `apps/api` utilise PostgreSQL comme source de vérité. Redis et
+Reverb ne conservent aucun état métier autoritatif.
 
 L'identité utilise Sanctum pour l'authentification API, Spatie Laravel
-Permission pour le RBAC global de plateforme et des memberships Barkeelu pour
-les organisations. Les Policies Laravel combinent ces permissions globales et
-les règles contextuelles d'organisation.
+Permission pour le RBAC global et des memberships Barkeelu pour les
+organisations. Les bénéficiaires, représentants historisés et profils KYC sont
+disponibles ; les documents KYC restent sur un disque privé dédié avec empreinte
+SHA-256.
 
-Les bénéficiaires, représentants historisés et profils KYC sont disponibles en
-API. Les documents KYC sont enregistrés sur un disque privé dédié, avec empreinte
-SHA-256 et sans exposition des clés internes de stockage. Aucun domaine Payment,
-Wave, Ledger ou autre domaine financier n'est implémenté.
+Le cœur Campaign est disponible avec owner User ou Organization, bénéficiaire
+obligatoire, cycle de vie contrôlé et projections non autoritatives.
 
-Le cœur Campaign est disponible : owner User ou Organization, bénéficiaire
-obligatoire, cycle de vie contrôlé et visibilités PUBLIC, UNLISTED et PRIVATE.
-Les projections sont non autoritatives et ne sont modifiables par aucune API.
-TARGETED, Program, Project, Category, Donation, Payment et Ledger restent hors
-du périmètre implémenté.
+La fondation financière 06A fournit un ledger technique interne en double
+entrée. PostgreSQL protège l'équilibre des transactions `POSTED` au commit,
+l'immutabilité des transactions et entries postées, ainsi que l'immutabilité des
+frais appliqués. Les corrections passent par reversal ; l'idempotence repose sur
+`business_key` et `content_hash`. Les politiques de frais XOF et une Outbox
+transactionnelle sont disponibles pour les futurs domaines financiers.
+
+Cette fondation ne constitue pas une comptabilité légale ou fiscale et
+n'implémente encore ni Donation, ni Payment, ni Wave, ni Webhook métier, ni
+Refund, ni Payout, ni Reconciliation.
 
 Référence :
 
@@ -71,10 +57,6 @@ docs/decisions/
 
 ## Gouvernance
 
-Lire `AGENTS.md` avant toute modification.
-
-## Langue
-
-Documentation, rapports, commentaires et messages Git : français.
-
-Identifiants techniques du code : anglais.
+Lire `AGENTS.md` avant toute modification. Les commentaires, documents,
+rapports et messages Git sont en français ; les identifiants techniques restent
+en anglais.
