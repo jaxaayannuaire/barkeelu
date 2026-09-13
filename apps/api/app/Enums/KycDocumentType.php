@@ -1,0 +1,13 @@
+<?php
+
+namespace App\Enums;
+
+enum KycDocumentType: string
+{
+    case IDENTITY_DOCUMENT = 'IDENTITY_DOCUMENT';
+    case PASSPORT = 'PASSPORT';
+    case REGISTRATION_DOCUMENT = 'REGISTRATION_DOCUMENT';
+    case PROOF_OF_ADDRESS = 'PROOF_OF_ADDRESS';
+    case REPRESENTATION_PROOF = 'REPRESENTATION_PROOF';
+    case OTHER = 'OTHER';
+}

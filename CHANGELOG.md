@@ -4,6 +4,22 @@ Toutes les évolutions importantes du projet sont documentées ici.
 
 > Une fonctionnalité n'est présentée comme validée que lorsque son implémentation et ses tests correspondants ont été vérifiés.
 
+## 2026-09-13 — Bénéficiaires, représentants et KYC
+
+### Ajouté
+
+- tables PostgreSQL `beneficiaries`, `beneficiary_representatives`, `kyc_profiles` et `kyc_documents` ;
+- contraintes PostgreSQL XOR pour les liens bénéficiaire et le sujet KYC, ainsi que les index partiels d'unicité KYC ;
+- représentants historisés avec validité temporelle et sans attribution automatique de rôle ;
+- services transactionnels, Policies et API Sanctum minimales pour les bénéficiaires et profils KYC ;
+- disque `kyc_private` dédié, privé, avec clé d'objet non prédictible et empreinte SHA-256 ;
+- tests PostgreSQL des contraintes, de l'isolation, des Policies, du stockage privé et des ressources API.
+
+### Limites
+
+- la revue KYC et ses transitions restent hors de cette recette initiale ;
+- aucun OCR, reconnaissance faciale, stockage objet OVH de production, Campaign, Payment, Wave, Ledger ou domaine financier n'est implémenté.
+
 ## 2026-09-13 — Identity, Organizations et RBAC plateforme
 
 ### Ajouté

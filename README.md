@@ -44,8 +44,12 @@ Barkeelu Live n'est encore implémentée.
 L'identité utilise Sanctum pour l'authentification API, Spatie Laravel
 Permission pour le RBAC global de plateforme et des memberships Barkeelu pour
 les organisations. Les Policies Laravel combinent ces permissions globales et
-les règles contextuelles d'organisation. Aucun domaine KYC, campagne ou
-financier n'est implémenté à ce stade.
+les règles contextuelles d'organisation.
+
+Les bénéficiaires, représentants historisés et profils KYC sont disponibles en
+API. Les documents KYC sont enregistrés sur un disque privé dédié, avec empreinte
+SHA-256 et sans exposition des clés internes de stockage. Aucun domaine Campaign,
+Payment, Wave, Ledger ou autre domaine financier n'est implémenté.
 
 Référence :
 

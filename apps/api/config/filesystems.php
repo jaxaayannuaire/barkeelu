@@ -38,6 +38,12 @@ return [
             'report' => false,
         ],
 
+        'kyc_private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/kyc-private'),
+            'throw' => true,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

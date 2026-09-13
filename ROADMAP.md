@@ -18,7 +18,7 @@
 | Queue Redis | ✅ Réalisé |
 | Reverb infrastructure (broadcasting) | ✅ Réalisé |
 | Identity / Organizations / Platform RBAC | ✅ Réalisé |
-| Beneficiaries / KYC | ⏳ Planifié |
+| Beneficiaries / Representatives / KYC | ✅ Réalisé |
 | Campaigns | ⏳ Planifié |
 | Payment Wave | ⏳ Planifié |
 | Ledger | ⏳ Planifié |
