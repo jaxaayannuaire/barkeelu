@@ -17,7 +17,7 @@
 | Redis infrastructure (cache) | ✅ Réalisé |
 | Queue Redis | ✅ Réalisé |
 | Reverb infrastructure (broadcasting) | ✅ Réalisé |
-| Identity / Organizations / RBAC | ⏳ Planifié |
+| Identity / Organizations / Platform RBAC | ✅ Réalisé |
 | Beneficiaries / KYC | ⏳ Planifié |
 | Campaigns | ⏳ Planifié |
 | Payment Wave | ⏳ Planifié |

@@ -4,6 +4,23 @@ Toutes les évolutions importantes du projet sont documentées ici.
 
 > Une fonctionnalité n'est présentée comme validée que lorsque son implémentation et ses tests correspondants ont été vérifiés.
 
+## 2026-09-13 — Identity, Organizations et RBAC plateforme
+
+### Ajouté
+
+- Spatie Laravel Permission 8.3.0 avec guard unique `web` et Teams désactivé ;
+- tables officielles Spatie, tables `organizations` et `organization_members` ;
+- rôles et permissions globaux de plateforme via un seeder idempotent ;
+- création atomique d'organisation avec UUID public, slug stable et OWNER initial ;
+- Policies Laravel et API Sanctum pour lister, créer, consulter et modifier les organisations ;
+- tests PostgreSQL du RBAC global, des Policies, des contraintes et de l'isolation.
+
+### Limites
+
+- les memberships Barkeelu ne sont pas des Teams Spatie ;
+- aucun KYC, Campaign, Payment, Ledger, Payout ou autre domaine financier n'est implémenté ;
+- aucune invitation organisationnelle complète n'est implémentée.
+
 ## 2026-09-13 — Infrastructure Redis, queue et Reverb
 
 ### Ajouté

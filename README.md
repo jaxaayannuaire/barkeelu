@@ -41,6 +41,12 @@ transport temps réel. PostgreSQL reste la source de vérité. Laravel Reverb es
 configuré pour le broadcasting technique ; aucune fonctionnalité métier
 Barkeelu Live n'est encore implémentée.
 
+L'identité utilise Sanctum pour l'authentification API, Spatie Laravel
+Permission pour le RBAC global de plateforme et des memberships Barkeelu pour
+les organisations. Les Policies Laravel combinent ces permissions globales et
+les règles contextuelles d'organisation. Aucun domaine KYC, campagne ou
+financier n'est implémenté à ce stade.
+
 Référence :
 
 ```text
