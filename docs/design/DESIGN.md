@@ -1,31 +1,31 @@
-# Barkeelu — Design System UI/UX
+﻿# Barkeelu â€” Design System UI/UX
 
 **Version :** 0.1  
-**Statut :** proposition initiale à valider  
-**Périmètre :** site public, parcours de don, espaces authentifiés et administration  
-**Références :** GoFundMe (simplicité et conversion), Ulule (découverte et narration), sans reproduction de leur identité.
+**Statut :** proposition initiale Ã  valider  
+**PÃ©rimÃ¨tre :** site public, parcours de don, espaces authentifiÃ©s et administration  
+**RÃ©fÃ©rences :** GoFundMe (simplicitÃ© et conversion), Ulule (dÃ©couverte et narration), sans reproduction de leur identitÃ©.
 
 ## 1. Principes produit
 
-Barkeelu doit paraître simple, humain, fiable et local. L’interface privilégie :
+Barkeelu doit paraÃ®tre simple, humain, fiable et local. Lâ€™interface privilÃ©gie :
 
-1. la compréhension immédiate de la cause ;
-2. la confiance avant l’action ;
-3. un don réalisable rapidement sur mobile ;
-4. la transparence sur le bénéficiaire, la collecte et les frais ;
-5. la découverte éditoriale des campagnes et de leur impact.
+1. la comprÃ©hension immÃ©diate de la cause ;
+2. la confiance avant lâ€™action ;
+3. un don rÃ©alisable rapidement sur mobile ;
+4. la transparence sur le bÃ©nÃ©ficiaire, la collecte et les frais ;
+5. la dÃ©couverte Ã©ditoriale des campagnes et de leur impact.
 
-Le design ne doit jamais suggérer qu’un paiement, un contrôle KYC ou un décaissement est confirmé avant validation par le serveur.
+Le design ne doit jamais suggÃ©rer quâ€™un paiement, un contrÃ´le KYC ou un dÃ©caissement est confirmÃ© avant validation par le serveur.
 
-## 2. Identité visuelle
+## 2. IdentitÃ© visuelle
 
 ### 2.1 Logos
 
-- **Logo horizontal :** en-tête desktop, pied de page, communications officielles.
-- **Logo carré :** favicon, icône d’application, avatar, navigation mobile compacte.
-- Conserver les proportions, les couleurs et une zone de protection égale à environ 25 % de la hauteur du symbole.
-- Ne pas déformer, recolorer, incliner ou placer le logo sur un fond insuffisamment contrasté.
-- Prévoir ultérieurement des variantes vectorielles SVG et monochromes validées.
+- **Logo horizontal :** en-tÃªte desktop, pied de page, communications officielles.
+- **Logo carrÃ© :** favicon, icÃ´ne dâ€™application, avatar, navigation mobile compacte.
+- Conserver les proportions, les couleurs et une zone de protection Ã©gale Ã  environ 25 % de la hauteur du symbole.
+- Ne pas dÃ©former, recolorer, incliner ou placer le logo sur un fond insuffisamment contrastÃ©.
+- PrÃ©voir ultÃ©rieurement des variantes vectorielles SVG et monochromes validÃ©es.
 
 ### 2.2 Palette principale
 
@@ -33,40 +33,40 @@ Le design ne doit jamais suggérer qu’un paiement, un contrôle KYC ou un déc
 |---|---:|---|
 | `brand-primary` | `#6257E2` | CTA principal, liens actifs, focus, progression |
 | `brand-primary-hover` | `#5146CE` | Survol du CTA principal |
-| `brand-primary-soft` | `#EFEDFF` | Fonds légers et sélections |
+| `brand-primary-soft` | `#EFEDFF` | Fonds lÃ©gers et sÃ©lections |
 | `brand-secondary` | `#FEA500` | Accent, mise en avant et actions secondaires |
 | `brand-secondary-hover` | `#E89200` | Survol secondaire |
-| `brand-secondary-soft` | `#FFF4DC` | Badges et fonds d’accent |
-| `brand-symbol-green` | `#39C43A` | Couleur patrimoniale du symbole, usage limité |
+| `brand-secondary-soft` | `#FFF4DC` | Badges et fonds dâ€™accent |
+| `brand-symbol-green` | `#39C43A` | Couleur patrimoniale du symbole, usage limitÃ© |
 
-Le violet demeure la couleur fonctionnelle dominante. L’orange sert d’accent. Le vert du logo ne devient pas une troisième couleur d’action concurrente.
+Le violet demeure la couleur fonctionnelle dominante. Lâ€™orange sert dâ€™accent. Le vert du logo ne devient pas une troisiÃ¨me couleur dâ€™action concurrente.
 
-### 2.3 Neutres et états
+### 2.3 Neutres et Ã©tats
 
 | Jeton | Valeur | Usage |
 |---|---:|---|
 | `neutral-950` | `#17171C` | Titres et texte fort |
 | `neutral-700` | `#4E4D58` | Texte courant |
-| `neutral-500` | `#777582` | Métadonnées |
+| `neutral-500` | `#777582` | MÃ©tadonnÃ©es |
 | `neutral-300` | `#D8D6E0` | Bordures |
 | `neutral-100` | `#F5F4F8` | Fonds secondaires |
 | `neutral-0` | `#FFFFFF` | Surface principale |
-| `success` | `#168A48` | Succès confirmé |
+| `success` | `#168A48` | SuccÃ¨s confirmÃ© |
 | `warning` | `#B86A00` | Attention |
 | `danger` | `#C73535` | Erreur ou action destructive |
 | `info` | `#2563B8` | Information neutre |
 
-Les états ne reposent jamais uniquement sur la couleur : ajouter icône, libellé ou message.
+Les Ã©tats ne reposent jamais uniquement sur la couleur : ajouter icÃ´ne, libellÃ© ou message.
 
 ## 3. Typographie
 
 Police principale : **Kodchasan**, Google Fonts.
 
-- Poids courant recommandé : `500` (Medium), identité officielle.
-- Prévoir `600` pour les titres et CTA si le fichier de police est chargé.
+- Poids courant recommandÃ© : `500` (Medium), identitÃ© officielle.
+- PrÃ©voir `600` pour les titres et CTA si le fichier de police est chargÃ©.
 - Fallback : `Kodchasan, system-ui, sans-serif`.
-- Corps mobile : 16 px minimum ; petits libellés : 13–14 px minimum.
-- Interligne : 1,45 à 1,6 pour le contenu narratif.
+- Corps mobile : 16 px minimum ; petits libellÃ©s : 13â€“14 px minimum.
+- Interligne : 1,45 Ã  1,6 pour le contenu narratif.
 - Les montants utilisent des chiffres tabulaires si disponibles.
 
 | Style | Mobile | Desktop | Poids |
@@ -80,13 +80,13 @@ Police principale : **Kodchasan**, Google Fonts.
 
 ## 4. Grille, espacements et formes
 
-- Conception mobile-first à partir de 320 px.
-- Conteneur desktop : largeur maximale 1200 px, gouttières 24 px.
+- Conception mobile-first Ã  partir de 320 px.
+- Conteneur desktop : largeur maximale 1200 px, gouttiÃ¨res 24 px.
 - Grille desktop : 12 colonnes ; tablette : 8 ; mobile : 4.
-- Échelle d’espacement : 4, 8, 12, 16, 24, 32, 48, 64, 96 px.
-- Rayon : 10 px pour champs/boutons, 16 px pour cartes, 24 px pour blocs éditoriaux.
-- Ombres discrètes ; privilégier bordure et espace blanc.
-- Cibles tactiles : 44 × 44 px minimum.
+- Ã‰chelle dâ€™espacement : 4, 8, 12, 16, 24, 32, 48, 64, 96 px.
+- Rayon : 10 px pour champs/boutons, 16 px pour cartes, 24 px pour blocs Ã©ditoriaux.
+- Ombres discrÃ¨tes ; privilÃ©gier bordure et espace blanc.
+- Cibles tactiles : 44 Ã— 44 px minimum.
 
 ## 5. Composants fondamentaux
 
@@ -94,160 +94,160 @@ Police principale : **Kodchasan**, Google Fonts.
 
 - **Primaire :** fond violet, texte blanc ; action principale unique par zone.
 - **Secondaire :** fond blanc, bordure violette, texte violet.
-- **Accent :** orange, réservé à une mise en avant non concurrente avec « Faire un don ».
+- **Accent :** orange, rÃ©servÃ© Ã  une mise en avant non concurrente avec Â« Faire un don Â».
 - **Destructif :** rouge, avec confirmation explicite.
-- États obligatoires : défaut, hover, focus visible, pressé, chargement, désactivé.
+- Ã‰tats obligatoires : dÃ©faut, hover, focus visible, pressÃ©, chargement, dÃ©sactivÃ©.
 
 ### 5.2 Formulaires
 
-- Libellé persistant au-dessus du champ ; placeholder uniquement comme exemple.
-- Erreur placée sous le champ et résumée en haut pour les longs formulaires.
-- Sauvegarde de brouillon pour la création de campagne.
-- Montants saisis et affichés en FCFA, mais transmis selon le contrat API en entier XOF.
-- Aucun secret ou document KYC ne doit apparaître dans une URL, une notification ou un aperçu public.
+- LibellÃ© persistant au-dessus du champ ; placeholder uniquement comme exemple.
+- Erreur placÃ©e sous le champ et rÃ©sumÃ©e en haut pour les longs formulaires.
+- Sauvegarde de brouillon pour la crÃ©ation de campagne.
+- Montants saisis et affichÃ©s en FCFA, mais transmis selon le contrat API en entier XOF.
+- Aucun secret ou document KYC ne doit apparaÃ®tre dans une URL, une notification ou un aperÃ§u public.
 
 ### 5.3 Carte campagne
 
-Contenu minimal : image, catégorie future, titre, organisateur, localisation éventuelle, montant collecté, objectif, barre de progression et état de vérification explicite.
+Contenu minimal : image, catÃ©gorie future, titre, organisateur, localisation Ã©ventuelle, montant collectÃ©, objectif, barre de progression et Ã©tat de vÃ©rification explicite.
 
-La carte entière est cliquable, mais les liens internes restent accessibles au clavier. Éviter les compteurs ou badges non encore calculés par le backend.
+La carte entiÃ¨re est cliquable, mais les liens internes restent accessibles au clavier. Ã‰viter les compteurs ou badges non encore calculÃ©s par le backend.
 
 ### 5.4 Confiance
 
 Composants distincts :
 
-- identité/organisation vérifiée ;
-- bénéficiaire identifié ;
-- KYC en cours, validé ou refusé ;
+- identitÃ©/organisation vÃ©rifiÃ©e ;
+- bÃ©nÃ©ficiaire identifiÃ© ;
+- KYC en cours, validÃ© ou refusÃ© ;
 - progression de collecte ;
-- transparence et preuves, futures fonctionnalités.
+- transparence et preuves, futures fonctionnalitÃ©s.
 
-Ne jamais confondre vérification, note utilisateur, Trust Score et Transparency Score.
+Ne jamais confondre vÃ©rification, note utilisateur, Trust Score et Transparency Score.
 
 ## 6. Architecture de navigation
 
 ### Public
 
 - Logo
-- Découvrir
-- Catégories (lorsque le domaine existe)
-- Comment ça marche
-- À propos
+- DÃ©couvrir
+- CatÃ©gories (lorsque le domaine existe)
+- Comment Ã§a marche
+- Ã€ propos
 - Rechercher
 - Se connecter
 - **Lancer une collecte**
 
-### Authentifié
+### AuthentifiÃ©
 
-- Vue d’ensemble
+- Vue dâ€™ensemble
 - Mes campagnes
-- Bénéficiaires
+- BÃ©nÃ©ficiaires
 - Organisations
-- Vérification/KYC
+- VÃ©rification/KYC
 - Dons et paiements (futur)
-- Décaissements (futur)
-- Paramètres
+- DÃ©caissements (futur)
+- ParamÃ¨tres
 
 ### Administration
 
 - Tableau de bord
-- Campagnes à examiner
-- KYC et bénéficiaires
+- Campagnes Ã  examiner
+- KYC et bÃ©nÃ©ficiaires
 - Utilisateurs et organisations
 - Paiements, ledger, remboursements et payouts (futurs)
-- Signalements et modération (futurs)
-- Audit et paramètres
+- Signalements et modÃ©ration (futurs)
+- Audit et paramÃ¨tres
 
-## 7. Écrans prioritaires
+## 7. Ã‰crans prioritaires
 
-### Phase Design 1 — acquisition et conversion
+### Phase Design 1 â€” acquisition et conversion
 
-1. page d’accueil desktop et mobile ;
+1. page dâ€™accueil desktop et mobile ;
 2. composants du design system ;
-3. liste/découverte des campagnes ;
+3. liste/dÃ©couverte des campagnes ;
 4. fiche campagne ;
 5. parcours de don ;
 6. confirmation ou traitement du paiement.
 
-### Phase Design 2 — création et gestion
+### Phase Design 2 â€” crÃ©ation et gestion
 
 1. inscription/connexion ;
-2. choix du propriétaire et du bénéficiaire ;
-3. assistant de création de campagne ;
+2. choix du propriÃ©taire et du bÃ©nÃ©ficiaire ;
+3. assistant de crÃ©ation de campagne ;
 4. tableau de bord promoteur ;
-5. gestion du contenu et soumission à examen ;
-6. KYC et documents privés.
+5. gestion du contenu et soumission Ã  examen ;
+6. KYC et documents privÃ©s.
 
-### Phase Design 3 — opérations
+### Phase Design 3 â€” opÃ©rations
 
 1. file de validation des campagnes ;
 2. revue KYC ;
-3. opérations financières ;
+3. opÃ©rations financiÃ¨res ;
 4. rapprochement et incidents ;
-5. modération, audit et rapports.
+5. modÃ©ration, audit et rapports.
 
-## 8. Homepage — structure initiale
+## 8. Homepage â€” structure initiale
 
-1. en-tête simple et rassurant ;
-2. hero avec promesse claire, recherche et CTA « Lancer une collecte » ;
+1. en-tÃªte simple et rassurant ;
+2. hero avec promesse claire, recherche et CTA Â« Lancer une collecte Â» ;
 3. campagnes urgentes ou mises en avant ;
-4. découverte par causes, lorsque les catégories seront disponibles ;
-5. fonctionnement en trois étapes ;
-6. bloc confiance : validation, transparence, paiements adaptés au Sénégal ;
-7. histoires et impact, futur contenu éditorial ;
+4. dÃ©couverte par causes, lorsque les catÃ©gories seront disponibles ;
+5. fonctionnement en trois Ã©tapes ;
+6. bloc confiance : validation, transparence, paiements adaptÃ©s au SÃ©nÃ©gal ;
+7. histoires et impact, futur contenu Ã©ditorial ;
 8. CTA final ;
-9. pied de page institutionnel et légal.
+9. pied de page institutionnel et lÃ©gal.
 
-Le hero évite le carrousel automatique. Une photographie humaine authentique ou une composition éditoriale sobre est préférable à une illustration générique.
+Le hero Ã©vite le carrousel automatique. Une photographie humaine authentique ou une composition Ã©ditoriale sobre est prÃ©fÃ©rable Ã  une illustration gÃ©nÃ©rique.
 
-## 9. Fiche campagne — structure initiale
+## 9. Fiche campagne â€” structure initiale
 
-- Fil d’Ariane discret.
+- Fil dâ€™Ariane discret.
 - Visuel principal et galerie future.
-- Titre, organisateur, bénéficiaire et états de confiance.
-- Montant collecté en FCFA, objectif, progression, nombre de dons confirmé.
-- CTA « Faire un don » toujours accessible sur mobile.
-- Récit de la campagne.
-- Actualités, preuves et commentaires lorsqu’ils existeront.
-- Partage, signalement et informations de sécurité.
-- Carte de don sticky sur desktop ; barre d’action basse sur mobile.
+- Titre, organisateur, bÃ©nÃ©ficiaire et Ã©tats de confiance.
+- Montant collectÃ© en FCFA, objectif, progression, nombre de dons confirmÃ©.
+- CTA Â« Faire un don Â» toujours accessible sur mobile.
+- RÃ©cit de la campagne.
+- ActualitÃ©s, preuves et commentaires lorsquâ€™ils existeront.
+- Partage, signalement et informations de sÃ©curitÃ©.
+- Carte de don sticky sur desktop ; barre dâ€™action basse sur mobile.
 
-Les campagnes `UNLISTED` sont accessibles par lien direct mais absentes de la découverte. Les campagnes `PRIVATE` ne sont jamais rendues publiquement.
+Les campagnes `UNLISTED` sont accessibles par lien direct mais absentes de la dÃ©couverte. Les campagnes `PRIVATE` ne sont jamais rendues publiquement.
 
-## 10. Parcours de don — cible UX
+## 10. Parcours de don â€” cible UX
 
-Parcours prévu, à ne pas confondre avec l’état actuel du code :
+Parcours prÃ©vu, Ã  ne pas confondre avec lâ€™Ã©tat actuel du code :
 
 1. choix du montant ;
-2. identité publique ou anonymat selon politique future ;
-3. récapitulatif clair : don, frais Barkeelu, éventuels frais confirmés, total ;
+2. identitÃ© publique ou anonymat selon politique future ;
+3. rÃ©capitulatif clair : don, frais Barkeelu, Ã©ventuels frais confirmÃ©s, total ;
 4. choix du moyen de paiement, Wave prioritaire ;
 5. redirection ou autorisation provider ;
-6. écran « paiement en cours de vérification » ;
-7. confirmation uniquement après réponse serveur fiable ;
-8. reçu, partage et suivi.
+6. Ã©cran Â« paiement en cours de vÃ©rification Â» ;
+7. confirmation uniquement aprÃ¨s rÃ©ponse serveur fiable ;
+8. reÃ§u, partage et suivi.
 
-Prévoir les états : expiré, annulé, refusé, doublon, retard webhook, montant incohérent et reprise sans double débit.
+PrÃ©voir les Ã©tats : expirÃ©, annulÃ©, refusÃ©, doublon, retard webhook, montant incohÃ©rent et reprise sans double dÃ©bit.
 
-## 11. Responsive et accessibilité
+## 11. Responsive et accessibilitÃ©
 
-- Priorité aux réseaux mobiles et appareils modestes.
-- Images responsives, compression et chargement différé.
+- PrioritÃ© aux rÃ©seaux mobiles et appareils modestes.
+- Images responsives, compression et chargement diffÃ©rÃ©.
 - Contraste WCAG AA au minimum.
-- Navigation complète au clavier et focus visible.
+- Navigation complÃ¨te au clavier et focus visible.
 - Respect de `prefers-reduced-motion`.
 - Textes alternatifs utiles ; aucune information essentielle dans une image.
-- Français en langue initiale ; textes suffisamment souples pour de futures traductions.
+- FranÃ§ais en langue initiale ; textes suffisamment souples pour de futures traductions.
 
-## 12. Règles éditoriales
+## 12. RÃ¨gles Ã©ditoriales
 
-- Français simple, phrases courtes, ton digne et rassurant.
+- FranÃ§ais simple, phrases courtes, ton digne et rassurant.
 - Ne pas dramatiser artificiellement les situations.
-- Afficher les responsabilités : organisateur, propriétaire et bénéficiaire.
-- Employer « Faire un don », « Lancer une collecte », « Montant collecté » et « Objectif » de manière cohérente.
-- Distinguer clairement brouillon, soumis, en examen, publié, suspendu, terminé et fermé.
+- Afficher les responsabilitÃ©s : organisateur, propriÃ©taire et bÃ©nÃ©ficiaire.
+- Employer Â« Faire un don Â», Â« Lancer une collecte Â», Â« Montant collectÃ© Â» et Â« Objectif Â» de maniÃ¨re cohÃ©rente.
+- Distinguer clairement brouillon, soumis, en examen, publiÃ©, suspendu, terminÃ© et fermÃ©.
 
-## 13. Jetons CSS de départ
+## 13. Jetons CSS de dÃ©part
 
 ```css
 :root {
@@ -270,23 +270,24 @@ Prévoir les états : expiré, annulé, refusé, doublon, retard webhook, montan
 }
 ```
 
-Ces jetons sont une base de travail. Leur contraste et leur rendu doivent être vérifiés sur les maquettes avant stabilisation.
+Ces jetons sont une base de travail. Leur contraste et leur rendu doivent Ãªtre vÃ©rifiÃ©s sur les maquettes avant stabilisation.
 
-## 14. Règles d’intégration
+## 14. RÃ¨gles dâ€™intÃ©gration
 
-- Google Stitch produit les explorations, écrans et prototypes.
-- Le présent document reste la source de vérité des règles validées.
-- Le code exporté est une référence visuelle, pas une architecture Laravel à accepter automatiquement.
-- L’intégration cible Laravel SSR ; les interactions progressives doivent respecter l’API `/api/v1` et les Policies serveur.
-- Aucun écran ne doit inventer une route, une permission ou un statut comme fonctionnalité livrée.
-- Les données financières et KYC sont toujours contrôlées côté backend.
+- Google Stitch produit les explorations, Ã©crans et prototypes.
+- Le prÃ©sent document reste la source de vÃ©ritÃ© des rÃ¨gles validÃ©es.
+- Le code exportÃ© est une rÃ©fÃ©rence visuelle, pas une architecture Laravel Ã  accepter automatiquement.
+- Lâ€™intÃ©gration cible Laravel SSR ; les interactions progressives doivent respecter lâ€™API `/api/v1` et les Policies serveur.
+- Aucun Ã©cran ne doit inventer une route, une permission ou un statut comme fonctionnalitÃ© livrÃ©e.
+- Les donnÃ©es financiÃ¨res et KYC sont toujours contrÃ´lÃ©es cÃ´tÃ© backend.
 
-## 15. Points à valider
+## 15. Points Ã  valider
 
-- valeur exacte du vert du logo à partir du fichier source officiel ;
-- variantes SVG/monochromes et règles détaillées du logo ;
-- style photographique et règles de consentement ;
-- catégories de campagne et taxonomie ;
-- wording légal des frais et du paiement Wave ;
-- politique d’anonymat des donateurs ;
+- valeur exacte du vert du logo Ã  partir du fichier source officiel ;
+- variantes SVG/monochromes et rÃ¨gles dÃ©taillÃ©es du logo ;
+- style photographique et rÃ¨gles de consentement ;
+- catÃ©gories de campagne et taxonomie ;
+- wording lÃ©gal des frais et du paiement Wave ;
+- politique dâ€™anonymat des donateurs ;
 - langues futures, notamment wolof et anglais.
+
