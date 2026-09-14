@@ -16,6 +16,7 @@ class FinancialFoundationSeeder extends Seeder
             ['SETTLEMENT_CLEARING', 'Settlement clearing', 'ASSET'],
             ['PROVIDER_FUNDS', 'Provider funds', 'ASSET'],
             ['CAMPAIGN_PAYABLE', 'Campaign payable', 'LIABILITY'],
+            ['PAYOUT_RESERVED', 'Payout reserved', 'LIABILITY'],
             ['PAYOUT_PROVISION_RESERVE', 'Payout provision reserve', 'LIABILITY'],
             ['REFUND_PAYABLE', 'Refund payable', 'LIABILITY'],
             ['UNAPPLIED_FUNDS', 'Unapplied funds', 'LIABILITY'],

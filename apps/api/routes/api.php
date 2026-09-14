@@ -7,6 +7,9 @@ use App\Http\Controllers\Api\V1\DonationController;
 use App\Http\Controllers\Api\V1\KycProfileController;
 use App\Http\Controllers\Api\V1\OrganizationController;
 use App\Http\Controllers\Api\V1\PaymentController;
+use App\Http\Controllers\Api\V1\PayoutController;
+use App\Http\Controllers\Api\V1\ReconciliationController;
+use App\Http\Controllers\Api\V1\RefundController;
 use App\Http\Controllers\Api\V1\WebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -27,6 +30,14 @@ Route::prefix('v1')->group(function (): void {
         Route::get('donations/{donation}', [DonationController::class, 'show']);
         Route::post('donations/{donation}/payments', [DonationController::class, 'storePayment']);
         Route::get('payments/{payment}', [PaymentController::class, 'show']);
+        Route::post('payments/{payment}/refunds', [RefundController::class, 'store']);
+        Route::get('refunds/{refund}', [RefundController::class, 'show']);
+        Route::post('campaigns/{campaign}/payouts', [PayoutController::class, 'store']);
+        Route::get('payouts/{payout}', [PayoutController::class, 'show']);
+        Route::post('payouts/{payout}/approve', [PayoutController::class, 'approve']);
+        Route::post('reconciliation-runs', [ReconciliationController::class, 'store']);
+        Route::get('reconciliation-runs/{run}', [ReconciliationController::class, 'show']);
+        Route::post('reconciliation-items/{item}/resolve', [ReconciliationController::class, 'resolve']);
         Route::patch('manage/campaigns/{campaign}', [CampaignController::class, 'update']);
         Route::post('manage/campaigns/{campaign}/submit', [CampaignController::class, 'submit']);
         Route::post('manage/campaigns/{campaign}/review', [CampaignController::class, 'review']);

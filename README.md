@@ -9,8 +9,7 @@ plusieurs Payments : un second succès est conservé et comptabilisé vers
 
 Les webhooks bruts sont persistés avant traitement, dédupliqués et traités par
 queue. Les signatures invalides n'ont aucun effet métier. Aucun fournisseur Wave
-de production n'est activé ; Refund, Payout et Reconciliation restent hors
-périmètre.
+de production n'est activé.
 
 Plateforme de fundraising, crowdfunding, dons, solidarité et impact social.
 
@@ -51,9 +50,16 @@ frais appliqués. Les corrections passent par reversal ; l'idempotence repose su
 `business_key` et `content_hash`. Les politiques de frais XOF et une Outbox
 transactionnelle sont disponibles pour les futurs domaines financiers.
 
-Cette fondation ne constitue pas une comptabilité légale ou fiscale et
-n'implémente encore ni Donation, ni Payment, ni Wave, ni Webhook métier, ni
-Refund, ni Payout, ni Reconciliation.
+La mission 06C ajoute des Refunds et Payouts réservés dans le ledger, avec
+idempotence, séparation `finance_operator` / `finance_approver`, statuts
+`UNKNOWN` pour les réponses fournisseur ambiguës et rapprochement audité. Les
+corrections de reconciliation passent exclusivement par reversal. Les soldes
+Campaign restent des projections non autoritatives : les réservations sont
+matérialisées dans le ledger, via `PAYOUT_RESERVED`.
+
+Cette fondation ne constitue pas une comptabilité légale ou fiscale. Wave de
+production, l'orchestration bancaire complète et les décisions financières
+automatisées ne sont pas implémentés.
 
 Référence :
 

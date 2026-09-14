@@ -1,5 +1,21 @@
 # Barkeelu — CHANGELOG
 
+## 2026-09-14 — Refunds, payouts et reconciliation
+
+### Ajouté
+
+- tables PostgreSQL `refunds`, `payouts`, `reconciliation_runs` et `reconciliation_items` ;
+- Refunds partiels idempotents, avec réservation atomique et origine ledger `CAMPAIGN_PAYABLE` ou `UNAPPLIED_FUNDS` ;
+- Payouts avec séparation operator/approver, interdiction d'auto-approbation, snapshot de destination et réservation `CAMPAIGN_PAYABLE` vers `PAYOUT_RESERVED` ;
+- exécution et libération des payouts exclusivement par postings ledger ;
+- rapprochement MVP couvrant les six résultats ADR-014, résolution auditée et correction financière par reversal ;
+- preuves de concurrence PostgreSQL réelle pour les Refunds et les réservations Payout.
+
+### Limites
+
+- Wave production, orchestration bancaire complète et comptabilité légale restent hors périmètre ;
+- un état fournisseur ambigu reste `UNKNOWN` jusqu'à vérification ou reconciliation, sans retry aveugle.
+
 ## 2026-09-13 — Donations, paiements et webhooks
 
 ### Ajouté

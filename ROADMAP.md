@@ -1,9 +1,10 @@
 # Barkeelu — ROADMAP
 
-## Mission 06B
+## Mission 06C
 
-Donations, Payments, Provider Accounts et Webhooks : réalisé. Refund, Payout,
-Reconciliation complète et Wave production restent planifiés.
+Donations, Payments, Provider Accounts, Webhooks, Refunds, Payouts et
+Reconciliation MVP : réalisés. Wave production, comptabilité légale et
+orchestration bancaire complète restent planifiés.
 
 ## Statut global
 
@@ -16,8 +17,8 @@ Reconciliation complète et Wave production restent planifiés.
 | Beneficiaries / Representatives / KYC | Réalisé |
 | Campaign core | Réalisé |
 | Fondation financière : ledger, frais, Outbox | Réalisé |
-| Donation / Payment / Provider accounts / Webhooks | Planifié |
-| Refund / Payout / Reconciliation | Planifié |
+| Donation / Payment / Provider accounts / Webhooks | Réalisé |
+| Refund / Payout / Reconciliation MVP | Réalisé |
 | Barkeelu Live data-only | Planifié |
 | Flutter | Planifié |
 | Production | Non autorisée |
@@ -29,7 +30,7 @@ Reconciliation complète et Wave production restent planifiés.
 3. Cœur Campaign ;
 4. Fondation financière : ledger double entrée, frais et Outbox ;
 5. Donations, paiements et persistance des webhooks ;
-6. Refund, Payout et Reconciliation.
+6. Refund, Payout et Reconciliation MVP.
 
 ## Limites de la fondation financière
 
