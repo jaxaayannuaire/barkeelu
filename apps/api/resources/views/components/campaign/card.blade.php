@@ -11,6 +11,7 @@
     'demoLabel' => 'Exemple fictif',
     'isDemo' => false,
     'currency' => 'XOF',
+    'url' => null,
 ])
 
 @php
@@ -30,7 +31,13 @@
                 <span class="rounded-full bg-brand-secondary-soft px-3 py-1 text-xs font-semibold text-[#8a5100]">{{ $demoLabel }}</span>
             @endif
         </div>
-        <h3 class="mt-4 text-xl font-semibold text-ink">{{ $title }}</h3>
+        <h3 class="mt-4 text-xl font-semibold text-ink">
+            @if (! $isDemo && $url)
+                <a class="rounded-sm focus:outline-none focus:ring-4 focus:ring-brand-primary-soft" href="{{ $url }}" aria-label="Voir la collecte {{ $title }}">{{ $title }}</a>
+            @else
+                {{ $title }}
+            @endif
+        </h3>
         <p class="mt-2 text-sm leading-6 text-muted">{{ $summary }}</p>
         <p class="mt-4 text-sm text-muted">Organisateur : {{ $organizer }}</p>
         @if ($verificationStatus !== null)

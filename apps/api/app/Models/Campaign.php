@@ -41,6 +41,16 @@ class Campaign extends Model
             ->where('visibility', CampaignVisibility::PUBLIC->value);
     }
 
+    public function scopePubliclyViewable(Builder $query): void
+    {
+        $query
+            ->where('status', CampaignStatus::PUBLISHED->value)
+            ->whereIn('visibility', [
+                CampaignVisibility::PUBLIC->value,
+                CampaignVisibility::UNLISTED->value,
+            ]);
+    }
+
     public function ownerUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_user_id');

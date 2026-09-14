@@ -4,7 +4,15 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="description" content="@yield('description', 'Barkeelu, plateforme solidaire pour le Sénégal et sa diaspora.')">
+        <meta name="robots" content="@yield('robots', 'index,follow')">
         <title>@yield('title', 'Barkeelu')</title>
+        @hasSection('canonical')
+            <link rel="canonical" href="@yield('canonical')">
+        @endif
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="@yield('og_title', View::yieldContent('title', 'Barkeelu'))">
+        <meta property="og:description" content="@yield('og_description', View::yieldContent('description', 'Barkeelu, plateforme solidaire pour le Sénégal et sa diaspora.'))">
+        <meta property="og:image" content="@yield('og_image', asset('images/placeholders/campaign-community.svg'))">
         <link rel="icon" type="image/png" href="{{ asset('images/brand/barkeelu-square.png') }}">
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
             @vite(['resources/css/app.css', 'resources/js/app.js'])

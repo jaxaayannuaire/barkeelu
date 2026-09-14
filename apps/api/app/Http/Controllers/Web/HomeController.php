@@ -61,6 +61,7 @@ class HomeController extends Controller
                 'publicId' => $campaign->public_id,
                 'title' => $campaign->title,
                 'slug' => $campaign->slug,
+                'url' => route('campaigns.show', ['slug' => $campaign->slug]),
                 'summary' => Str::limit(strip_tags($campaign->description), 180),
                 'organizer' => $campaign->owner_organization_id !== null
                     ? 'Collecte portée par une organisation'

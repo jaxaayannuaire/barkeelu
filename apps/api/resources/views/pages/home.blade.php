@@ -62,6 +62,7 @@
                         :demo-label="$campaign['demoLabel']"
                         :is-demo="$campaign['isDemo'] ?? $demoMode"
                         :currency="$campaign['currency'] ?? 'XOF'"
+                        :url="$campaign['url'] ?? null"
                     />
                 @endforeach
             </div>
