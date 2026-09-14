@@ -6,9 +6,11 @@
     'collected',
     'goal',
     'contributions',
-    'verificationStatus',
+    'verificationStatus' => null,
     'cause',
-    'demoLabel',
+    'demoLabel' => 'Exemple fictif',
+    'isDemo' => false,
+    'currency' => 'XOF',
 ])
 
 @php
@@ -24,13 +26,17 @@
     <div class="p-5">
         <div class="flex flex-wrap items-center justify-between gap-2">
             <p class="text-xs font-semibold text-brand-primary">{{ $cause }}</p>
-            <span class="rounded-full bg-brand-secondary-soft px-3 py-1 text-xs font-semibold text-[#8a5100]">{{ $demoLabel }}</span>
+            @if ($isDemo)
+                <span class="rounded-full bg-brand-secondary-soft px-3 py-1 text-xs font-semibold text-[#8a5100]">{{ $demoLabel }}</span>
+            @endif
         </div>
         <h3 class="mt-4 text-xl font-semibold text-ink">{{ $title }}</h3>
         <p class="mt-2 text-sm leading-6 text-muted">{{ $summary }}</p>
         <p class="mt-4 text-sm text-muted">Organisateur : {{ $organizer }}</p>
-        <div class="mt-4"><x-campaign.verification-badge :status="$verificationStatus" /></div>
-        <div class="mt-5"><x-campaign.progress :collected="$collected" :goal="$goal" /></div>
-        <p class="mt-4 text-sm text-muted">{{ number_format($contributions, 0, ',', ' ') }} contributions fictives</p>
+        @if ($verificationStatus !== null)
+            <div class="mt-4"><x-campaign.verification-badge :status="$verificationStatus" /></div>
+        @endif
+        <div class="mt-5"><x-campaign.progress :collected="$collected" :goal="$goal" :currency="$currency" /></div>
+        <p class="mt-4 text-sm text-muted">{{ number_format($contributions, 0, ',', ' ') }} contributions{{ $isDemo ? ' fictives' : '' }}</p>
     </div>
 </article>

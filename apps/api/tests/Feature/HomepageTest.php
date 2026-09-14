@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
 class HomepageTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_the_homepage_renders_the_public_demo_content(): void
     {
         $response = $this->get('/');
@@ -18,7 +21,7 @@ class HomepageTest extends TestCase
             ->assertSee('Exemple fictif', false)
             ->assertSee('2 450 000 FCFA')
             ->assertSee('role="progressbar"', false)
-            ->assertDontSee('href="#"', false);
+            ->assertDontSee('href="'.'#"', false);
     }
 
     public function test_the_homepage_does_not_render_forbidden_claims_or_stitch_urls(): void

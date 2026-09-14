@@ -120,7 +120,7 @@ class CampaignTest extends TestCase
         $unlisted = $this->campaign($user, $beneficiary, CampaignStatus::PUBLISHED, CampaignVisibility::UNLISTED);
         $private = $this->campaign($user, $beneficiary, CampaignStatus::PUBLISHED, CampaignVisibility::PRIVATE);
         $targeted = $this->campaign($user, $beneficiary, CampaignStatus::PUBLISHED, CampaignVisibility::TARGETED);
-        $this->getJson('/api/v1/campaigns')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.public_id', $public->public_id);
+        $this->getJson('/api/v1/campaigns')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.public_id', $public->public_id)->assertJsonPath('meta.current_page', 1);
         $this->getJson('/api/v1/campaigns/by-slug/'.$unlisted->slug)->assertOk();
         $this->getJson('/api/v1/campaigns/by-slug/'.$private->slug)->assertNotFound();
         $this->getJson('/api/v1/campaigns/by-slug/'.$targeted->slug)->assertNotFound();

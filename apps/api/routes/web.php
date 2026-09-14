@@ -1,8 +1,6 @@
 <?php
 
-use App\Support\HomeDemoData;
+use App\Http\Controllers\Web\HomeController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('pages.home', ['campaigns' => HomeDemoData::campaigns()]);
-});
+Route::get('/', HomeController::class);

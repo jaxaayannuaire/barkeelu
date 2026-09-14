@@ -24,7 +24,7 @@ class CampaignController extends Controller
 {
     public function index()
     {
-        return CampaignResource::collection(Campaign::query()->where('status', CampaignStatus::PUBLISHED->value)->where('visibility', 'PUBLIC')->latest('id')->paginate());
+        return CampaignResource::collection(Campaign::query()->publiclyListed()->latest('id')->paginate());
     }
 
     public function publicShow(string $slug): CampaignResource

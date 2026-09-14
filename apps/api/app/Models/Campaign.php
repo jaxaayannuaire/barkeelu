@@ -6,6 +6,7 @@ use App\Enums\CampaignFundraisingStatus;
 use App\Enums\CampaignPayoutStatus;
 use App\Enums\CampaignStatus;
 use App\Enums\CampaignVisibility;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -31,6 +32,13 @@ class Campaign extends Model
     public function getGoalReachedAttribute(): bool
     {
         return $this->net_collected_nominal >= $this->goal_amount;
+    }
+
+    public function scopePubliclyListed(Builder $query): void
+    {
+        $query
+            ->where('status', CampaignStatus::PUBLISHED->value)
+            ->where('visibility', CampaignVisibility::PUBLIC->value);
     }
 
     public function ownerUser(): BelongsTo

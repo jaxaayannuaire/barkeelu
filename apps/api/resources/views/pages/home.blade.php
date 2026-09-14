@@ -6,7 +6,9 @@
 @section('content')
     <section class="bg-gradient-to-b from-brand-primary-soft to-white" aria-labelledby="home-title">
         <div class="mx-auto max-w-[1200px] px-6 py-16 text-center sm:py-24">
-            <p class="inline-flex rounded-full bg-white px-4 py-2 text-xs font-semibold text-brand-primary shadow-sm">Maquette — contenus et données fictifs</p>
+            @if ($demoMode)
+                <p class="inline-flex rounded-full bg-white px-4 py-2 text-xs font-semibold text-brand-primary shadow-sm">Maquette — contenus et données fictifs</p>
+            @endif
             <h1 id="home-title" class="mx-auto mt-6 max-w-3xl text-4xl font-semibold tracking-tight text-ink sm:text-5xl lg:text-6xl">Ensemble, donnons vie aux projets qui comptent.</h1>
             <p class="mx-auto mt-6 max-w-2xl text-base leading-7 text-muted">Barkeelu prépare un espace solidaire pour découvrir des initiatives et suivre leur présentation publique.</p>
             <div class="mx-auto mt-8 max-w-2xl text-left">
@@ -40,10 +42,10 @@
         <div class="mx-auto max-w-[1200px] px-6 py-16 sm:py-24">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                    <p class="text-sm font-semibold text-brand-primary">Sélection de démonstration</p>
+                    <p class="text-sm font-semibold text-brand-primary">{{ $demoMode ? 'Sélection de démonstration' : 'Collectes publiques' }}</p>
                     <h2 id="campaigns-title" class="mt-2 text-3xl font-semibold text-ink">Collectes à soutenir</h2>
                 </div>
-                <p class="text-sm text-muted">Exemples fictifs, sans lien vers un parcours de don.</p>
+                <p class="text-sm text-muted">{{ $demoMode ? 'Exemples fictifs, sans lien vers un parcours de don.' : 'Collectes publiques, sans lien vers un parcours de don.' }}</p>
             </div>
             <div class="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 @foreach ($campaigns as $campaign)
@@ -58,6 +60,8 @@
                         :verification-status="$campaign['verificationStatus']"
                         :cause="$campaign['cause']"
                         :demo-label="$campaign['demoLabel']"
+                        :is-demo="$campaign['isDemo'] ?? $demoMode"
+                        :currency="$campaign['currency'] ?? 'XOF'"
                     />
                 @endforeach
             </div>

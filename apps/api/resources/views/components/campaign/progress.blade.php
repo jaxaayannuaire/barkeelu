@@ -1,8 +1,11 @@
-@props(['collected', 'goal'])
+@props(['collected', 'goal', 'currency' => 'XOF'])
 
 @php
     if (! is_int($collected) || ! is_int($goal) || $collected < 0 || $goal <= 0) {
         throw new InvalidArgumentException('La progression requiert des montants entiers non négatifs et un objectif strictement positif.');
+    }
+    if ($currency !== 'XOF') {
+        throw new InvalidArgumentException('La devise de progression doit être XOF.');
     }
 
     $percentage = intdiv($collected, $goal) * 100 + intdiv(($collected % $goal) * 100, $goal);
