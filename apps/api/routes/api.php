@@ -3,8 +3,11 @@
 use App\Http\Controllers\Api\V1\AuthTokenController;
 use App\Http\Controllers\Api\V1\BeneficiaryController;
 use App\Http\Controllers\Api\V1\CampaignController;
+use App\Http\Controllers\Api\V1\DonationController;
 use App\Http\Controllers\Api\V1\KycProfileController;
 use App\Http\Controllers\Api\V1\OrganizationController;
+use App\Http\Controllers\Api\V1\PaymentController;
+use App\Http\Controllers\Api\V1\WebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -15,10 +18,15 @@ Route::prefix('v1')->group(function (): void {
 
     Route::get('campaigns', [CampaignController::class, 'index']);
     Route::get('campaigns/by-slug/{slug}', [CampaignController::class, 'publicShow']);
+    Route::post('webhooks/{provider}', [WebhookController::class, 'store'])->middleware('throttle:auth-token');
 
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('me/campaigns', [CampaignController::class, 'mine']);
         Route::post('campaigns', [CampaignController::class, 'store']);
+        Route::post('campaigns/{campaign}/donations', [DonationController::class, 'store']);
+        Route::get('donations/{donation}', [DonationController::class, 'show']);
+        Route::post('donations/{donation}/payments', [DonationController::class, 'storePayment']);
+        Route::get('payments/{payment}', [PaymentController::class, 'show']);
         Route::patch('manage/campaigns/{campaign}', [CampaignController::class, 'update']);
         Route::post('manage/campaigns/{campaign}/submit', [CampaignController::class, 'submit']);
         Route::post('manage/campaigns/{campaign}/review', [CampaignController::class, 'review']);

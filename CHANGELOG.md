@@ -1,5 +1,20 @@
 # Barkeelu — CHANGELOG
 
+## 2026-09-13 — Donations, paiements et webhooks
+
+### Ajouté
+
+- tables PostgreSQL provider_accounts, donations, payments et webhook_events ;
+- relation Donation 1:N Payment, clés d’idempotence et contraintes PostgreSQL ;
+- persistance, déduplication et traitement asynchrone des webhooks ;
+- double succès fournisseur conservé vers UNAPPLIED_FUNDS ;
+- test de concurrence PostgreSQL réelle sur deux processus Laravel distincts.
+
+### Limites
+
+- Wave production n’est pas activé ;
+- Refund, Payout et Reconciliation complète restent hors périmètre.
+
 Toutes les évolutions importantes du projet sont documentées ici.
 
 > Une fonctionnalité n'est présentée comme validée que lorsque son implémentation et ses tests correspondants ont été vérifiés.

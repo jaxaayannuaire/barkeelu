@@ -1,5 +1,17 @@
 # Barkeelu.com
 
+## Fondation Donations et Payments
+
+La mission 06B ajoute les intentions de donation, les tentatives de paiement,
+les comptes fournisseur et la persistance des webhooks. Une Donation peut avoir
+plusieurs Payments : un second succès est conservé et comptabilisé vers
+`UNAPPLIED_FUNDS`, sans augmenter automatiquement le nominal de la Donation.
+
+Les webhooks bruts sont persistés avant traitement, dédupliqués et traités par
+queue. Les signatures invalides n'ont aucun effet métier. Aucun fournisseur Wave
+de production n'est activé ; Refund, Payout et Reconciliation restent hors
+périmètre.
+
 Plateforme de fundraising, crowdfunding, dons, solidarité et impact social.
 
 ## Statut

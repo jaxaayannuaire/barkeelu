@@ -1,5 +1,10 @@
 # Barkeelu — ROADMAP
 
+## Mission 06B
+
+Donations, Payments, Provider Accounts et Webhooks : réalisé. Refund, Payout,
+Reconciliation complète et Wave production restent planifiés.
+
 ## Statut global
 
 | Domaine | État |
