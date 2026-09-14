@@ -9,8 +9,9 @@
             <span class="sr-only">Accueil Barkeelu</span>
         </a>
         <nav aria-label="Navigation principale" class="flex items-center gap-1 sm:gap-4">
-            <a class="flex min-h-11 items-center rounded-[10px] px-3 text-sm text-muted hover:text-brand-primary focus:outline-none focus:ring-4 focus:ring-brand-primary-soft" href="{{ url('/#comment-ca-marche') }}">Comment ça marche</a>
-            <a class="flex min-h-11 items-center rounded-[10px] px-3 text-sm text-muted hover:text-brand-primary focus:outline-none focus:ring-4 focus:ring-brand-primary-soft" href="{{ url('/#a-propos') }}">À propos</a>
+            <a class="flex min-h-11 items-center rounded-[10px] px-3 text-sm text-muted hover:text-brand-primary focus:outline-none focus:ring-4 focus:ring-brand-primary-soft" href="{{ url('/#collectes') }}">Découvrir</a>
+            <a class="hidden min-h-11 items-center rounded-[10px] px-3 text-sm text-muted hover:text-brand-primary focus:outline-none focus:ring-4 focus:ring-brand-primary-soft sm:flex" href="{{ url('/#comment-ca-marche') }}">Comment ça marche</a>
+            <a class="hidden min-h-11 items-center rounded-[10px] px-3 text-sm text-muted hover:text-brand-primary focus:outline-none focus:ring-4 focus:ring-brand-primary-soft md:flex" href="{{ url('/#a-propos') }}">À propos</a>
         </nav>
     </div>
 </header>
