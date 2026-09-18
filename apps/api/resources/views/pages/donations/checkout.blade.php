@@ -23,7 +23,12 @@
             <button class="min-h-11 w-full rounded-[10px] bg-brand-primary px-4 font-semibold text-white">Confirmer le don</button>
         </form>
     @elseif ($checkout->status->value === 'CONFIRMED')
-        <p class="mt-6 rounded-2xl bg-surface-muted p-4 text-sm text-muted">Don confirmé. La création du paiement sera disponible dans une étape ultérieure.</p>
+        <form class="mt-6" method="post" action="{{ route('donations.pay', [$campaign->slug, $checkout->public_id]) }}">
+            @csrf
+            <button class="min-h-11 w-full rounded-[10px] bg-brand-primary px-4 font-semibold text-white">Payer le don</button>
+        </form>
+    @elseif ($checkout->status->value === 'PAYMENT_PENDING' || $checkout->status->value === 'UNKNOWN')
+        <a class="mt-6 inline-flex min-h-11 items-center rounded-[10px] border border-border px-4 font-semibold" href="{{ route('donations.waiting.checkout', [$campaign->slug, $checkout->public_id]) }}">Voir le statut du paiement</a>
     @else
         <p class="mt-6 rounded-2xl bg-surface-muted p-4 text-sm text-muted">Cette quote n’est plus confirmable. Revenez à l’étape coordonnées pour générer une nouvelle quote.</p>
     @endif

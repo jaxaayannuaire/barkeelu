@@ -91,7 +91,14 @@ class CheckoutPaymentService
                 ]);
                 $this->transitionIfNeeded($session, CheckoutStatus::PAYMENT_PENDING);
             } elseif ($result->status->value === 'SENT_UNKNOWN') {
-                $payment->update(['status' => PaymentStatus::UNKNOWN, 'provider_status' => 'UNKNOWN_SENT']);
+                $payment->update([
+                    'status' => PaymentStatus::UNKNOWN,
+                    'provider_status' => 'UNKNOWN_SENT',
+                    'provider_checkout_session_id' => $result->operationReference,
+                    'provider_client_reference' => $result->providerReference,
+                    'provider_checkout_expires_at' => $result->expiresAt,
+                    'payer_mobile_encrypted' => $input['payer_mobile'],
+                ]);
                 $this->transitionIfNeeded($session, CheckoutStatus::UNKNOWN, true);
             } else {
                 $payment->update(['status' => PaymentStatus::FAILED, 'provider_status' => 'NOT_SENT']);

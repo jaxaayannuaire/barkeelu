@@ -86,6 +86,31 @@ class CheckoutPaymentTest extends TestCase
         $this->assertSame(CheckoutStatus::CONFIRMED, $session->refresh()->status);
     }
 
+    public function test_sent_unknown_persists_provider_evidence_without_changing_unknown_states(): void
+    {
+        [$session, $account] = $this->confirmedCheckout();
+        $expiresAt = now()->addMinutes(12)->toIso8601String();
+        $gateway = $this->gateway(new ProviderInitiationResult(
+            ProviderInitiationStatus::SENT_UNKNOWN,
+            'wave-unknown-session',
+            'wave-unknown-client-reference',
+            null,
+            $expiresAt,
+        ));
+        $this->useGateway($gateway);
+
+        $result = app(CheckoutPaymentService::class)->initiate($session, $account, $this->paymentInput('attempt-unknown-evidence'));
+        $payment = $result->payment->refresh();
+
+        $this->assertSame(PaymentStatus::UNKNOWN, $payment->status);
+        $this->assertSame(CheckoutStatus::UNKNOWN, $session->refresh()->status);
+        $this->assertSame('wave-unknown-session', $payment->provider_checkout_session_id);
+        $this->assertSame('wave-unknown-client-reference', $payment->provider_client_reference);
+        $this->assertNotNull($payment->provider_checkout_expires_at);
+        $this->assertSame($expiresAt, $payment->provider_checkout_expires_at->toIso8601String());
+        $this->assertSame('+221771234567', $payment->payer_mobile_encrypted);
+    }
+
     public function test_sent_unknown_blocks_retry_and_retrieve_can_resolve_to_paid(): void
     {
         [$session, $account] = $this->confirmedCheckout();

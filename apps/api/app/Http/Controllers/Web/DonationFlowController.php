@@ -3,23 +3,20 @@
 namespace App\Http\Controllers\Web;
 
 use App\Enums\CampaignFundraisingStatus;
+use App\Enums\CheckoutStatus;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Campaign;
 use App\Models\CheckoutSession;
-use App\Models\Donation;
 use App\Models\Payment;
 use App\Models\ProviderAccount;
 use App\Services\Checkout\CheckoutConfirmationService;
+use App\Services\Checkout\CheckoutPaymentService;
 use App\Services\Checkout\CheckoutQuoteService;
 use App\Services\Checkout\CheckoutSessionService;
-use App\Services\Donations\DonationService;
-use App\Services\Payments\PaymentService;
-use App\Services\Payments\WaveCheckoutService;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class DonationFlowController extends Controller
@@ -107,93 +104,168 @@ class DonationFlowController extends Controller
         return to_route('donations.checkout', [$slug, $checkout]);
     }
 
-    public function pay(Request $request, string $slug, DonationService $donations, PaymentService $payments, WaveCheckoutService $wave): RedirectResponse
+    public function payCheckout(string $slug, string $checkout, CheckoutPaymentService $checkoutPayments): RedirectResponse
+    {
+        $session = $this->checkoutSession($slug, $checkout);
+        try {
+            $account = $this->waveAccount($session->currency);
+        } catch (DomainException $exception) {
+            abort(409, $exception->getMessage());
+        }
+        $paymentKey = 'ssr-payment-'.$session->public_id.'-'.($session->donation?->payments()->count() + 1);
+        $waiting = route('donations.waiting.checkout', [$slug, $session->public_id]);
+
+        try {
+            $result = $checkoutPayments->initiate($session, $account, [
+                'idempotency_key' => $paymentKey,
+                'payer_mobile' => $session->donor_snapshot['phone'] ?? null,
+                'success_url' => $waiting,
+                'error_url' => $waiting,
+            ]);
+        } catch (DomainException $exception) {
+            abort(409, $exception->getMessage());
+        }
+
+        return $this->redirectForPayment($slug, $session, $result->payment, $result->redirectUrl);
+    }
+
+    public function waitingCheckout(string $slug, string $checkout): View
+    {
+        $session = $this->checkoutSession($slug, $checkout);
+        $payment = $session->lastPayment()->firstOrFail();
+
+        return view('pages.donations.waiting', ['checkout' => $session, 'payment' => $payment]);
+    }
+
+    public function statusCheckout(string $slug, string $checkout)
+    {
+        $session = $this->checkoutSession($slug, $checkout);
+        $payment = $session->lastPayment()->first();
+
+        return response()->json([
+            'checkout_status' => $session->status->value,
+            'payment_status' => $payment?->status?->value,
+            'donation_status' => $payment?->donation?->status?->value,
+        ])->header('Cache-Control', 'no-store');
+    }
+
+    public function retryCheckout(string $slug, string $checkout, CheckoutPaymentService $checkoutPayments): RedirectResponse
+    {
+        $session = $this->checkoutSession($slug, $checkout);
+        $payment = $session->lastPayment()->firstOrFail();
+        if ($payment->status !== PaymentStatus::FAILED) {
+            abort(409, 'Seul un paiement définitivement échoué peut être retenté.');
+        }
+
+        try {
+            $account = $this->waveAccount($session->currency);
+        } catch (DomainException $exception) {
+            abort(409, $exception->getMessage());
+        }
+        $paymentKey = 'ssr-payment-'.$session->public_id.'-'.($session->donation?->payments()->count() + 1);
+        $waiting = route('donations.waiting.checkout', [$slug, $session->public_id]);
+
+        try {
+            $result = $checkoutPayments->initiate($session, $account, [
+                'idempotency_key' => $paymentKey,
+                'payer_mobile' => $session->donor_snapshot['phone'] ?? null,
+                'success_url' => $waiting,
+                'error_url' => $waiting,
+            ]);
+        } catch (DomainException $exception) {
+            abort(409, $exception->getMessage());
+        }
+
+        return $this->redirectForPayment($slug, $session, $result->payment, $result->redirectUrl);
+    }
+
+    public function resolveCheckoutUnknown(string $slug, string $checkout, CheckoutPaymentService $checkoutPayments): RedirectResponse
+    {
+        $session = $this->checkoutSession($slug, $checkout);
+        $payment = $session->lastPayment()->firstOrFail();
+        if ($payment->status !== PaymentStatus::UNKNOWN) {
+            abort(409, 'Seul un paiement UNKNOWN peut être vérifié.');
+        }
+
+        try {
+            $resolved = $checkoutPayments->resolveUnknown($payment);
+        } catch (DomainException $exception) {
+            abort(409, $exception->getMessage());
+        }
+
+        return $this->redirectForPayment($slug, $session->refresh(), $resolved, null);
+    }
+
+    public function thanksCheckout(string $slug, string $checkout): View
+    {
+        $session = $this->checkoutSession($slug, $checkout);
+        abort_unless($session->status === CheckoutStatus::PAID, 404);
+
+        return view('pages.donations.thanks', ['checkout' => $session, 'donation' => $session->donation]);
+    }
+
+    public function failedCheckout(string $slug, string $checkout): View
+    {
+        $session = $this->checkoutSession($slug, $checkout);
+        $payment = $session->lastPayment()->firstOrFail();
+        abort_unless($payment->status === PaymentStatus::FAILED, 404);
+
+        return view('pages.donations.failed', ['checkout' => $session, 'payment' => $payment]);
+    }
+
+    private function waveAccount(string $currency): ProviderAccount
+    {
+        $accounts = ProviderAccount::query()->where('provider', 'WAVE')->where('currency', $currency)->where('is_active', true)->get();
+        if ($accounts->count() !== 1) {
+            throw new DomainException($accounts->isEmpty() ? 'Aucun compte Wave actif compatible.' : 'Plusieurs comptes Wave actifs compatibles nécessitent une règle de sélection.');
+        }
+
+        return $accounts->first();
+    }
+
+    private function redirectForPayment(string $slug, CheckoutSession $session, Payment $payment, ?string $redirectUrl): RedirectResponse
+    {
+        if ($payment->status === PaymentStatus::PENDING && $redirectUrl !== null) {
+            return redirect()->away($redirectUrl);
+        }
+        if ($payment->status === PaymentStatus::PAID) {
+            return to_route('donations.thanks.checkout', [$slug, $session->public_id]);
+        }
+        if ($payment->status === PaymentStatus::FAILED) {
+            return to_route('donations.failed.checkout', [$slug, $session->public_id]);
+        }
+
+        return to_route('donations.waiting.checkout', [$slug, $session->public_id]);
+    }
+
+    public function pay(): RedirectResponse
     {
         abort(410, 'Le paiement SSR legacy est désactivé pour ce parcours.');
-
-        $campaign = $this->campaign($slug);
-        $flow = $this->flow($slug);
-        abort_unless($wave->available(), 503);
-        $donation = $donations->create($campaign, null, ['nominal_amount' => $flow['nominal_amount'], 'currency' => 'XOF', 'donor_name' => $flow['donor_name'], 'is_anonymous' => $flow['is_anonymous'], 'idempotency_key' => 'guest-donation-'.$flow['token']]);
-        $account = ProviderAccount::query()->where('provider', 'WAVE')->where('currency', 'XOF')->where('is_active', true)->firstOrFail();
-        $payment = $payments->create($donation, $account, ['amount' => $donation->total_payable_amount, 'currency' => 'XOF', 'idempotency_key' => 'guest-payment-'.$flow['token']]);
-        $payment->update(['payer_mobile_encrypted' => $flow['payer_mobile'], 'provider_client_reference' => $payment->internal_reference]);
-        $waiting = route('donations.waiting', [$donation->public_id, $payment->public_id]);
-        $checkout = $wave->initiate($payment->refresh(), $flow['payer_mobile'], $waiting, $waiting);
-        $payment->update(['provider_checkout_session_id' => $checkout['id'], 'provider_checkout_expires_at' => $checkout['when_expires'], 'status' => PaymentStatus::PENDING]);
-        session(['donation_payment.'.$payment->public_id => $flow['token']]);
-
-        return redirect()->away($checkout['wave_launch_url']);
     }
 
     public function waiting(string $donation, string $payment): View
     {
-        return view('pages.donations.waiting', ['payment' => $this->privatePayment($donation, $payment)]);
+        abort(410, 'La route SSR legacy est désactivée pour ce parcours.');
     }
 
     public function status(string $donation, string $payment)
     {
-        $p = $this->privatePayment($donation, $payment);
-
-        return response()->json(['status' => $p->status->value])->header('Cache-Control', 'no-store');
+        abort(410, 'La route SSR legacy est désactivée pour ce parcours.');
     }
 
     public function thanks(string $donation): View
     {
-        $d = Donation::query()->where('public_id', $donation)->where('status', 'PAID')->firstOrFail();
-
-        return view('pages.donations.thanks', ['donation' => $d]);
+        abort(410, 'La route SSR legacy est désactivée pour ce parcours.');
     }
 
     public function failed(string $donation, string $payment): View
     {
-        $p = $this->privatePayment($donation, $payment);
-        abort_unless(in_array($p->status, [PaymentStatus::FAILED, PaymentStatus::CANCELLED, PaymentStatus::EXPIRED], true), 404);
-
-        return view('pages.donations.failed', ['payment' => $p]);
+        abort(410, 'La route SSR legacy est désactivée pour ce parcours.');
     }
 
-    public function retry(string $donation, string $payment, PaymentService $payments, WaveCheckoutService $wave): RedirectResponse
+    public function retry(): RedirectResponse
     {
         abort(410, 'Le retry SSR legacy est désactivé pour ce parcours.');
-
-        $current = $this->privatePayment($donation, $payment);
-        abort_unless($current->provider_checkout_session_id !== null, 422);
-        $checkout = $wave->retrieve($current->provider_checkout_session_id);
-        if (($checkout['checkout_status'] ?? null) === 'open') {
-            abort_unless(is_string($checkout['wave_launch_url'] ?? null), 502);
-
-            return redirect()->away($checkout['wave_launch_url']);
-        }
-        abort_unless(($checkout['checkout_status'] ?? null) === 'expired', 409);
-        $next = DB::transaction(function () use ($current, $payments): Payment {
-            $locked = Payment::query()->lockForUpdate()->findOrFail($current->id);
-            abort_unless($locked->status === PaymentStatus::EXPIRED, 409);
-            $retryKey = 'retry-'.$locked->public_id;
-            $existing = Payment::query()->where('idempotency_key', $retryKey)->lockForUpdate()->first();
-
-            if ($existing !== null) {
-                return $existing;
-            }
-
-            return $payments->create($locked->donation, $locked->providerAccount, [
-                'amount' => $locked->amount, 'currency' => $locked->currency, 'idempotency_key' => $retryKey,
-            ]);
-        });
-        if ($next->provider_checkout_session_id !== null) {
-            $resumed = $wave->retrieve($next->provider_checkout_session_id);
-            abort_unless(($resumed['checkout_status'] ?? null) === 'open' && is_string($resumed['wave_launch_url'] ?? null), 409);
-            session(['donation_payment.'.$next->public_id => session('donation_payment.'.$current->public_id)]);
-
-            return redirect()->away($resumed['wave_launch_url']);
-        }
-        $next->update(['payer_mobile_encrypted' => $current->payer_mobile_encrypted, 'provider_client_reference' => $next->internal_reference]);
-        $waiting = route('donations.waiting', [$donation, $next->public_id]);
-        $created = $wave->initiate($next->refresh(), $next->payer_mobile_encrypted, $waiting, $waiting);
-        $next->update(['provider_checkout_session_id' => $created['id'], 'provider_checkout_expires_at' => $created['when_expires'], 'status' => PaymentStatus::PENDING]);
-        session(['donation_payment.'.$next->public_id => session('donation_payment.'.$current->public_id)]);
-
-        return redirect()->away($created['wave_launch_url']);
     }
 
     private function campaign(string $slug): Campaign
@@ -224,21 +296,5 @@ class DonationFlowController extends Controller
         abort_unless((string) session('checkout_public_id') === $checkout->public_id, 404);
 
         return $checkout;
-    }
-
-    private function flow(string $slug): array
-    {
-        $flow = session('donation_flow.'.$slug);
-        abort_unless(is_array($flow) && ($flow['expires_at'] ?? 0) > now()->timestamp, 419);
-
-        return $flow;
-    }
-
-    private function privatePayment(string $donation, string $payment): Payment
-    {
-        $p = Payment::query()->where('public_id', $payment)->whereHas('donation', fn ($q) => $q->where('public_id', $donation))->firstOrFail();
-        abort_unless(hash_equals((string) session('donation_payment.'.$payment), (string) session('donation_flow.'.$p->donation->campaign->slug.'.token')), 404);
-
-        return $p;
     }
 }
