@@ -93,18 +93,6 @@ class PublicDonationFlowTest extends TestCase
         $this->post(route('donations.amount', $campaign->slug), ['nominal_amount' => 1000])->assertStatus(404);
     }
 
-    public function test_new_checkout_cannot_reach_legacy_payment_route(): void
-    {
-        $campaign = $this->campaign();
-        $this->post(route('donations.amount', $campaign->slug), ['nominal_amount' => 10000])->assertRedirect();
-
-        $this->post('/collectes/'.$campaign->slug.'/don/paiement')->assertStatus(410);
-        $this->assertSame(1, CheckoutSession::query()->count());
-        $this->assertSame(0, Donation::query()->count());
-        $this->assertSame(0, Payment::query()->count());
-        $this->assertSame(0, AppliedFee::query()->count());
-    }
-
     public function test_coordinates_create_server_quote_without_financial_side_effects(): void
     {
         $campaign = $this->campaign();

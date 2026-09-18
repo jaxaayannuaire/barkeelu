@@ -238,36 +238,6 @@ class DonationFlowController extends Controller
         return to_route('donations.waiting.checkout', [$slug, $session->public_id]);
     }
 
-    public function pay(): RedirectResponse
-    {
-        abort(410, 'Le paiement SSR legacy est désactivé pour ce parcours.');
-    }
-
-    public function waiting(string $donation, string $payment): View
-    {
-        abort(410, 'La route SSR legacy est désactivée pour ce parcours.');
-    }
-
-    public function status(string $donation, string $payment)
-    {
-        abort(410, 'La route SSR legacy est désactivée pour ce parcours.');
-    }
-
-    public function thanks(string $donation): View
-    {
-        abort(410, 'La route SSR legacy est désactivée pour ce parcours.');
-    }
-
-    public function failed(string $donation, string $payment): View
-    {
-        abort(410, 'La route SSR legacy est désactivée pour ce parcours.');
-    }
-
-    public function retry(): RedirectResponse
-    {
-        abort(410, 'Le retry SSR legacy est désactivé pour ce parcours.');
-    }
-
     private function campaign(string $slug): Campaign
     {
         return Campaign::query()->publiclyViewable()->where('fundraising_status', CampaignFundraisingStatus::OPEN)->where('slug', $slug)->firstOrFail();

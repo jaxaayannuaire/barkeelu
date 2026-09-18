@@ -20,9 +20,3 @@ Route::post('/collectes/{slug}/don/paiement/{checkout}/reessayer', [DonationFlow
 Route::post('/collectes/{slug}/don/paiement/{checkout}/verifier', [DonationFlowController::class, 'resolveCheckoutUnknown'])->name('donations.verify.checkout')->middleware('throttle:auth-token');
 Route::get('/collectes/{slug}/don/paiement/{checkout}/merci', [DonationFlowController::class, 'thanksCheckout'])->name('donations.thanks.checkout');
 Route::get('/collectes/{slug}/don/paiement/{checkout}/echec', [DonationFlowController::class, 'failedCheckout'])->name('donations.failed.checkout');
-Route::post('/collectes/{slug}/don/paiement', [DonationFlowController::class, 'pay'])->middleware('throttle:auth-token');
-Route::get('/dons/{donation}/paiement/{payment}/attente', [DonationFlowController::class, 'waiting'])->name('donations.waiting');
-Route::get('/dons/{donation}/paiement/{payment}/statut', [DonationFlowController::class, 'status'])->name('donations.status');
-Route::get('/dons/{donation}/merci', [DonationFlowController::class, 'thanks'])->name('donations.thanks');
-Route::get('/dons/{donation}/paiement/{payment}/echec', [DonationFlowController::class, 'failed'])->name('donations.failed');
-Route::post('/dons/{donation}/paiement/{payment}/reessayer', [DonationFlowController::class, 'retry'])->name('donations.retry')->middleware('throttle:auth-token');

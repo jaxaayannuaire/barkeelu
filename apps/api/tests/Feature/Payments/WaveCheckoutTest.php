@@ -147,16 +147,6 @@ class WaveCheckoutTest extends TestCase
         $this->assertSame('+221781234567', $recent->refresh()->payer_mobile_encrypted);
     }
 
-    public function test_legacy_retry_route_is_disabled_for_the_checkout_facade(): void
-    {
-        [$donation, , $payment] = $this->paymentWithDonation();
-        Http::fake();
-        $this->withSession($this->privateSession($donation, $payment))
-            ->post(route('donations.retry', [$donation->public_id, $payment->public_id]))
-            ->assertStatus(410);
-        $this->assertDatabaseCount('payments', 1);
-    }
-
     private function payment(): array
     {
         [, $account, $payment] = $this->paymentWithDonation();
@@ -197,13 +187,5 @@ class WaveCheckoutTest extends TestCase
     private function event(Payment $payment, string $status): array
     {
         return ['provider_account_id' => $payment->provider_account_id, 'internal_reference' => $payment->internal_reference, 'amount' => $payment->amount, 'currency' => $payment->currency, 'provider_status' => $status, 'provider_payment_id' => 'provider-'.$payment->id];
-    }
-
-    private function privateSession($donation, Payment $payment): array
-    {
-        return [
-            'donation_flow.'.$donation->campaign->slug => ['token' => 'private-flow-token', 'expires_at' => now()->addHour()->timestamp],
-            'donation_payment.'.$payment->public_id => 'private-flow-token',
-        ];
     }
 }
