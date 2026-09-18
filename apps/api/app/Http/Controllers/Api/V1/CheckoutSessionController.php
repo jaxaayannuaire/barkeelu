@@ -6,7 +6,9 @@ use App\Enums\CampaignFundraisingStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Campaign;
 use App\Models\CheckoutSession;
+use App\Models\ProviderAccount;
 use App\Services\Checkout\CheckoutConfirmationService;
+use App\Services\Checkout\CheckoutPaymentService;
 use App\Services\Checkout\CheckoutQuoteService;
 use App\Services\Checkout\CheckoutSessionService;
 use DomainException;
@@ -83,6 +85,47 @@ class CheckoutSessionController extends Controller
         ])]);
     }
 
+    public function payments(Request $request, CheckoutSession $checkout, CheckoutPaymentService $service): JsonResponse
+    {
+        $validated = $request->validate([
+            'provider_account_public_id' => ['required', 'uuid'],
+            'payer_mobile' => ['required', 'string', 'max:32'],
+            'success_url' => ['required', 'url', 'max:2048'],
+            'error_url' => ['required', 'url', 'max:2048'],
+            'idempotency_key' => ['required', 'string', 'max:255'],
+        ]);
+        $account = ProviderAccount::query()->where('public_id', $validated['provider_account_public_id'])->firstOrFail();
+
+        try {
+            $result = $service->initiate($checkout, $account, $validated);
+        } catch (DomainException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 409);
+        }
+
+        return response()->json(['data' => [
+            'checkout' => $this->publicPayload($checkout->refresh()),
+            'payment' => $this->paymentPayload($result->payment),
+            'redirect_url' => $result->redirectUrl,
+        ]]);
+    }
+
+    public function status(CheckoutSession $checkout): JsonResponse
+    {
+        $checkout->load(['donation', 'lastPayment']);
+
+        return response()->json(['data' => [
+            'checkout' => $this->publicPayload($checkout),
+            'donation' => $checkout->donation === null ? null : [
+                'public_id' => $checkout->donation->public_id,
+                'status' => $checkout->donation->status->value,
+                'currency' => $checkout->donation->currency,
+                'nominal_amount' => $checkout->donation->nominal_amount,
+                'total_payable_amount' => $checkout->donation->total_payable_amount,
+            ],
+            'payment' => $checkout->lastPayment === null ? null : $this->paymentPayload($checkout->lastPayment),
+        ]]);
+    }
+
     private function publicPayload(CheckoutSession $checkout): array
     {
         return [
@@ -110,5 +153,19 @@ class CheckoutSessionController extends Controller
                 'currency' => $fee['currency'],
             ])->values()->all(),
         ]);
+    }
+
+    private function paymentPayload($payment): array
+    {
+        return [
+            'public_id' => $payment->public_id,
+            'status' => $payment->status->value,
+            'provider_status' => $payment->provider_status,
+            'amount' => $payment->amount,
+            'currency' => $payment->currency,
+            'paid_at' => $payment->paid_at,
+            'created_at' => $payment->created_at,
+            'updated_at' => $payment->updated_at,
+        ];
     }
 }

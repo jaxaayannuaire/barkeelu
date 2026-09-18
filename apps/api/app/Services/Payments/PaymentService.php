@@ -4,6 +4,8 @@ namespace App\Services\Payments;
 
 use App\Enums\DonationStatus;
 use App\Enums\PaymentStatus;
+use App\Models\AppliedFee;
+use App\Models\CheckoutSession;
 use App\Models\Donation;
 use App\Models\LedgerAccount;
 use App\Models\Payment;
@@ -29,7 +31,7 @@ class PaymentService
             'amount' => $input['amount'],
             'currency' => $input['currency'],
         ];
-        $hash = hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR));
+        $hash = $input['content_hash'] ?? hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR));
 
         return DB::transaction(function () use ($donation, $providerAccount, $input, $hash): Payment {
             $existing = Payment::query()->where('idempotency_key', $input['idempotency_key'])->lockForUpdate()->first();
@@ -76,6 +78,9 @@ class PaymentService
             }
 
             if ($state !== 'PAID') {
+                if ($payment->status === PaymentStatus::UNKNOWN && $state === 'PENDING') {
+                    return $payment;
+                }
                 $target = match ($state) {
                     'PENDING' => PaymentStatus::PENDING,
                     'PROCESSING' => PaymentStatus::PROCESSING,
@@ -105,6 +110,10 @@ class PaymentService
             ]);
 
             $this->postLedger($payment->refresh(), $donation, $firstSuccess);
+
+            if ($firstSuccess) {
+                $this->materializeCheckoutAppliedFees($donation);
+            }
 
             if ($firstSuccess) {
                 $donation->update(['status' => DonationStatus::PAID, 'paid_at' => now()]);
@@ -158,5 +167,34 @@ class PaymentService
             $entries,
             $firstSuccess ? 'Payment captured' : 'Additional payment unapplied',
         );
+    }
+
+    private function materializeCheckoutAppliedFees(Donation $donation): void
+    {
+        $session = CheckoutSession::query()->where('donation_id', $donation->id)->first();
+        foreach ($session?->fee_snapshot['fees'] ?? [] as $fee) {
+            if (AppliedFee::query()
+                ->where('source_type', 'donation')
+                ->where('source_reference', $donation->public_id)
+                ->where('fee_type', $fee['fee_type'])
+                ->exists()) {
+                continue;
+            }
+
+            AppliedFee::query()->create([
+                'public_id' => (string) Str::uuid(),
+                'fee_policy_id' => $fee['policy_id'],
+                'source_type' => 'donation',
+                'source_reference' => $donation->public_id,
+                'fee_type' => $fee['fee_type'],
+                'rate_bps' => $fee['basis_points'],
+                'fixed_amount' => $fee['fixed_amount'],
+                'basis_amount' => $fee['calculation_base_amount'],
+                'amount' => $fee['calculated_amount'],
+                'currency' => $fee['currency'],
+                'payer' => 'donor',
+                'beneficiary' => $fee['fee_type'] === 'PLATFORM_FEE' ? 'platform' : 'payout_provision',
+            ]);
+        }
     }
 }

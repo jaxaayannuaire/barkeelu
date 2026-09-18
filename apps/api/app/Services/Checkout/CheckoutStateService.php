@@ -13,7 +13,7 @@ class CheckoutStateService
     private const TRANSITIONS = [
         'DRAFT' => ['QUOTED', 'EXPIRED', 'CANCELLED'],
         'QUOTED' => ['QUOTED', 'CONFIRMED', 'EXPIRED', 'CANCELLED'],
-        'CONFIRMED' => ['PAYMENT_PENDING', 'EXPIRED', 'CANCELLED'],
+        'CONFIRMED' => ['PAYMENT_PENDING', 'UNKNOWN', 'EXPIRED', 'CANCELLED'],
         'PAYMENT_PENDING' => ['PAID', 'FAILED', 'UNKNOWN', 'CANCELLED'],
         'UNKNOWN' => ['UNKNOWN', 'PAID', 'FAILED'],
         'FAILED' => ['PAYMENT_PENDING', 'CANCELLED'],
