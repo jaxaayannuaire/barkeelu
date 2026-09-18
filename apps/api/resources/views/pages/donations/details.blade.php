@@ -1,0 +1,6 @@
+@extends('layouts.public')
+@section('title', 'Vos coordonnées — Barkeelu')
+@section('robots', 'noindex,nofollow')
+@section('content')
+<section class="mx-auto max-w-md px-5 py-8"><p class="text-sm font-semibold text-brand-primary">Étape 2 sur 3 · Sécurisé</p><h1 class="mt-3 text-3xl font-semibold">Vos coordonnées</h1><p class="mt-3 text-sm text-muted">Parcours {{ $checkout->public_id }}</p><form class="mt-8 space-y-5" method="post">@csrf <div><label class="font-semibold" for="donor_name">Prénom et nom</label><input class="mt-2 min-h-11 w-full rounded-[10px] border border-border px-3" id="donor_name" name="donor_name" required></div><label class="flex gap-3"><input name="is_anonymous" type="checkbox" value="1"> Donateur anonyme publiquement</label><div><label class="font-semibold" for="payer_mobile">Compte Wave à débiter</label><input class="mt-2 min-h-11 w-full rounded-[10px] border border-border px-3" id="payer_mobile" name="payer_mobile" inputmode="tel" placeholder="+221771234567" required><p class="mt-2 text-sm text-muted">Vos coordonnées privées seront traitées lors de la quote serveur.</p></div><button class="min-h-11 w-full rounded-[10px] bg-brand-primary px-4 font-semibold text-white">Voir le récapitulatif</button></form></section>
+@endsection
