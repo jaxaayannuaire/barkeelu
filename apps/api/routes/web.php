@@ -12,6 +12,7 @@ Route::post('/collectes/{slug}/don', [DonationFlowController::class, 'storeAmoun
 Route::get('/collectes/{slug}/don/coordonnees/{checkout}', [DonationFlowController::class, 'details'])->name('donations.details');
 Route::post('/collectes/{slug}/don/coordonnees/{checkout}', [DonationFlowController::class, 'storeDetails'])->middleware('throttle:auth-token');
 Route::get('/collectes/{slug}/don/paiement/{checkout}', [DonationFlowController::class, 'checkout'])->name('donations.checkout');
+Route::post('/collectes/{slug}/don/paiement/{checkout}/confirmer', [DonationFlowController::class, 'confirm'])->name('donations.confirm')->middleware('throttle:auth-token');
 Route::post('/collectes/{slug}/don/paiement', [DonationFlowController::class, 'pay'])->middleware('throttle:auth-token');
 Route::get('/dons/{donation}/paiement/{payment}/attente', [DonationFlowController::class, 'waiting'])->name('donations.waiting');
 Route::get('/dons/{donation}/paiement/{payment}/statut', [DonationFlowController::class, 'status'])->name('donations.status');

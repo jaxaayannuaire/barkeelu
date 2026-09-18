@@ -10,6 +10,8 @@ use App\Models\CheckoutSession;
 use App\Models\Donation;
 use App\Models\Payment;
 use App\Models\ProviderAccount;
+use App\Services\Checkout\CheckoutConfirmationService;
+use App\Services\Checkout\CheckoutQuoteService;
 use App\Services\Checkout\CheckoutSessionService;
 use App\Services\Donations\DonationService;
 use App\Services\Payments\PaymentService;
@@ -57,10 +59,30 @@ class DonationFlowController extends Controller
         return view('pages.donations.details', ['campaign' => $this->campaign($slug), 'checkout' => $this->checkoutSession($slug, $checkout)]);
     }
 
-    public function storeDetails(Request $request, string $slug, string $checkout): RedirectResponse
+    public function storeDetails(Request $request, string $slug, string $checkout, CheckoutQuoteService $quotes): RedirectResponse
     {
-        $request->validate(['donor_name' => ['required', 'string', 'max:255'], 'is_anonymous' => ['nullable', 'boolean'], 'payer_mobile' => ['required', 'regex:/^\\+221[0-9]{9}$/']]);
-        $this->checkoutSession($slug, $checkout);
+        $input = $request->validate([
+            'donor_name' => ['required', 'string', 'max:255'],
+            'donor_email' => ['nullable', 'email', 'max:255'],
+            'is_anonymous' => ['nullable', 'boolean'],
+            'show_name' => ['nullable', 'boolean'],
+            'show_amount' => ['nullable', 'boolean'],
+            'payer_mobile' => ['required', 'regex:/^\\+221[0-9]{9}$/'],
+        ]);
+        $session = $this->checkoutSession($slug, $checkout);
+
+        try {
+            $quotes->quote($session, [
+                'name' => $input['donor_name'],
+                'email' => $input['donor_email'] ?? null,
+                'phone' => $input['payer_mobile'],
+                'is_anonymous' => (bool) ($input['is_anonymous'] ?? false),
+                'show_name' => (bool) ($input['show_name'] ?? false),
+                'show_amount' => (bool) ($input['show_amount'] ?? false),
+            ]);
+        } catch (DomainException $exception) {
+            abort(409, $exception->getMessage());
+        }
 
         return to_route('donations.checkout', [$slug, $checkout]);
     }
@@ -68,6 +90,21 @@ class DonationFlowController extends Controller
     public function checkout(string $slug, string $checkout): View
     {
         return view('pages.donations.checkout', ['campaign' => $this->campaign($slug), 'checkout' => $this->checkoutSession($slug, $checkout)]);
+    }
+
+    public function confirm(string $slug, string $checkout, CheckoutConfirmationService $confirmations): RedirectResponse
+    {
+        $session = $this->checkoutSession($slug, $checkout);
+
+        try {
+            $confirmations->confirm($session, [
+                'idempotency_key' => 'ssr-confirmation-'.$session->public_id,
+            ]);
+        } catch (DomainException $exception) {
+            abort(409, $exception->getMessage());
+        }
+
+        return to_route('donations.checkout', [$slug, $checkout]);
     }
 
     public function pay(Request $request, string $slug, DonationService $donations, PaymentService $payments, WaveCheckoutService $wave): RedirectResponse
