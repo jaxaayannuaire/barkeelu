@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AuthTokenController;
 use App\Http\Controllers\Api\V1\BeneficiaryController;
 use App\Http\Controllers\Api\V1\CampaignController;
+use App\Http\Controllers\Api\V1\CheckoutSessionController;
 use App\Http\Controllers\Api\V1\DonationController;
 use App\Http\Controllers\Api\V1\KycProfileController;
 use App\Http\Controllers\Api\V1\OrganizationController;
@@ -21,6 +22,8 @@ Route::prefix('v1')->group(function (): void {
 
     Route::get('campaigns', [CampaignController::class, 'index']);
     Route::get('campaigns/by-slug/{slug}', [CampaignController::class, 'publicShow']);
+    Route::post('campaigns/{campaign}/checkout-sessions', [CheckoutSessionController::class, 'store']);
+    Route::get('checkout-sessions/{checkout}', [CheckoutSessionController::class, 'show']);
     Route::post('webhooks/{provider}', [WebhookController::class, 'store'])->middleware('throttle:auth-token');
 
     Route::middleware('auth:sanctum')->group(function (): void {
