@@ -58,7 +58,8 @@ class PublicDonationFlowTest extends TestCase
             ->assertSee($checkout->public_id)
             ->assertSee('10 000 FCFA')
             ->assertDontSee('Frais plateforme')
-            ->assertDontSee('+221771234567');
+            ->assertDontSee('+221771234567')
+            ->assertDontSee('Payer avec Wave');
     }
 
     public function test_ssr_details_validates_phone_without_persisting_private_snapshot(): void
@@ -83,6 +84,18 @@ class PublicDonationFlowTest extends TestCase
         $campaign->update(['status' => CampaignStatus::DRAFT]);
 
         $this->post(route('donations.amount', $campaign->slug), ['nominal_amount' => 1000])->assertStatus(404);
+    }
+
+    public function test_new_checkout_cannot_reach_legacy_payment_route(): void
+    {
+        $campaign = $this->campaign();
+        $this->post(route('donations.amount', $campaign->slug), ['nominal_amount' => 10000])->assertRedirect();
+
+        $this->post('/collectes/'.$campaign->slug.'/don/paiement')->assertStatus(410);
+        $this->assertSame(1, CheckoutSession::query()->count());
+        $this->assertSame(0, Donation::query()->count());
+        $this->assertSame(0, Payment::query()->count());
+        $this->assertSame(0, AppliedFee::query()->count());
     }
 
     private function campaign(): Campaign

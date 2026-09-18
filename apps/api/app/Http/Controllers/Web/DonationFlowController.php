@@ -8,12 +8,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Campaign;
 use App\Models\CheckoutSession;
 use App\Models\Donation;
-use App\Models\FeePolicy;
 use App\Models\Payment;
 use App\Models\ProviderAccount;
 use App\Services\Checkout\CheckoutSessionService;
 use App\Services\Donations\DonationService;
-use App\Services\Finance\FeeCalculator;
 use App\Services\Payments\PaymentService;
 use App\Services\Payments\WaveCheckoutService;
 use DomainException;
@@ -74,6 +72,8 @@ class DonationFlowController extends Controller
 
     public function pay(Request $request, string $slug, DonationService $donations, PaymentService $payments, WaveCheckoutService $wave): RedirectResponse
     {
+        abort(410, 'Le paiement SSR legacy est désactivé pour ce parcours.');
+
         $campaign = $this->campaign($slug);
         $flow = $this->flow($slug);
         abort_unless($wave->available(), 503);
@@ -118,6 +118,8 @@ class DonationFlowController extends Controller
 
     public function retry(string $donation, string $payment, PaymentService $payments, WaveCheckoutService $wave): RedirectResponse
     {
+        abort(410, 'Le retry SSR legacy est désactivé pour ce parcours.');
+
         $current = $this->privatePayment($donation, $payment);
         abort_unless($current->provider_checkout_session_id !== null, 422);
         $checkout = $wave->retrieve($current->provider_checkout_session_id);
@@ -185,24 +187,6 @@ class DonationFlowController extends Controller
         abort_unless((string) session('checkout_public_id') === $checkout->public_id, 404);
 
         return $checkout;
-    }
-
-    private function feeQuote(?int $nominalAmount, FeeCalculator $feeCalculator): ?array
-    {
-        if ($nominalAmount === null || $nominalAmount < 1) {
-            return null;
-        }
-
-        $policies = FeePolicy::query()->whereIn('code', ['PLATFORM_FEE', 'PAYOUT_PROVISION_WORKING'])
-            ->where('currency', 'XOF')->where('active', true)->where('effective_from', '<=', now())
-            ->where(fn ($query) => $query->whereNull('effective_to')->orWhere('effective_to', '>', now()))
-            ->get()->keyBy('code');
-        $platform = $policies->get('PLATFORM_FEE');
-        $provision = $policies->get('PAYOUT_PROVISION_WORKING');
-        $platformAmount = $platform === null ? 0 : $feeCalculator->calculate($nominalAmount, $platform->rate_bps, $platform->fixed_amount ?? 0);
-        $provisionAmount = $provision === null ? 0 : $feeCalculator->calculate($nominalAmount, $provision->rate_bps, $provision->fixed_amount ?? 0);
-
-        return ['nominal_amount' => $nominalAmount, 'platform_amount' => $platformAmount, 'platform_rate_bps' => $platform?->rate_bps ?? 0, 'provision_amount' => $provisionAmount, 'provision_rate_bps' => $provision?->rate_bps ?? 0, 'total_amount' => $nominalAmount + $platformAmount + $provisionAmount];
     }
 
     private function flow(string $slug): array
