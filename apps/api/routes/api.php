@@ -24,6 +24,8 @@ Route::prefix('v1')->group(function (): void {
     Route::get('campaigns/by-slug/{slug}', [CampaignController::class, 'publicShow']);
     Route::post('campaigns/{campaign}/checkout-sessions', [CheckoutSessionController::class, 'store']);
     Route::get('checkout-sessions/{checkout}', [CheckoutSessionController::class, 'show']);
+    Route::post('checkout-sessions/{checkout}/quote', [CheckoutSessionController::class, 'quote']);
+    Route::post('checkout-sessions/{checkout}/confirm', [CheckoutSessionController::class, 'confirm']);
     Route::post('webhooks/{provider}', [WebhookController::class, 'store'])->middleware('throttle:auth-token');
 
     Route::middleware('auth:sanctum')->group(function (): void {

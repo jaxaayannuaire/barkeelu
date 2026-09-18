@@ -6,6 +6,8 @@ use App\Enums\CampaignFundraisingStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Campaign;
 use App\Models\CheckoutSession;
+use App\Services\Checkout\CheckoutConfirmationService;
+use App\Services\Checkout\CheckoutQuoteService;
 use App\Services\Checkout\CheckoutSessionService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -44,6 +46,43 @@ class CheckoutSessionController extends Controller
         return response()->json(['data' => $this->publicPayload($checkout)]);
     }
 
+    public function quote(Request $request, CheckoutSession $checkout, CheckoutQuoteService $service): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['nullable', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:64'],
+            'is_anonymous' => ['sometimes', 'boolean'],
+            'show_name' => ['sometimes', 'boolean'],
+            'show_amount' => ['sometimes', 'boolean'],
+        ]);
+
+        try {
+            $quoted = $service->quote($checkout, $validated);
+        } catch (DomainException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 409);
+        }
+
+        return response()->json(['data' => $this->quotePayload($quoted)]);
+    }
+
+    public function confirm(Request $request, CheckoutSession $checkout, CheckoutConfirmationService $service): JsonResponse
+    {
+        $validated = $request->validate([
+            'idempotency_key' => ['required', 'string', 'max:255'],
+        ]);
+
+        try {
+            $confirmed = $service->confirm($checkout, $validated);
+        } catch (DomainException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 409);
+        }
+
+        return response()->json(['data' => array_merge($this->publicPayload($confirmed), [
+            'donation_public_id' => $confirmed->donation?->public_id,
+        ])]);
+    }
+
     private function publicPayload(CheckoutSession $checkout): array
     {
         return [
@@ -59,5 +98,17 @@ class CheckoutSessionController extends Controller
             'created_at' => $checkout->created_at,
             'updated_at' => $checkout->updated_at,
         ];
+    }
+
+    private function quotePayload(CheckoutSession $checkout): array
+    {
+        return array_merge($this->publicPayload($checkout), [
+            'fees' => collect($checkout->fee_snapshot['fees'] ?? [])->map(fn (array $fee): array => [
+                'fee_type' => $fee['fee_type'],
+                'calculation_base_amount' => $fee['calculation_base_amount'],
+                'calculated_amount' => $fee['calculated_amount'],
+                'currency' => $fee['currency'],
+            ])->values()->all(),
+        ]);
     }
 }
