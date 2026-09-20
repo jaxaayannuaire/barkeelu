@@ -353,6 +353,30 @@ class WaveCheckoutTest extends TestCase
         }
     }
 
+    public function test_webhook_route_does_not_use_auth_token_throttle(): void
+    {
+        $this->payment();
+        Queue::fake();
+        $payload = ['id' => 'evt-wave-throttle-auth', 'type' => 'test.test_event', 'data' => []];
+
+        for ($attempt = 0; $attempt < 6; $attempt++) {
+            $this->waveWebhook('WAVE', $payload)->assertAccepted();
+        }
+    }
+
+    public function test_wave_webhook_throttle_returns_429_only_after_dedicated_limit(): void
+    {
+        $this->payment();
+        Queue::fake();
+        $payload = ['id' => 'evt-wave-throttle-limit', 'type' => 'test.test_event', 'data' => []];
+
+        for ($attempt = 0; $attempt < 120; $attempt++) {
+            $this->waveWebhook('WAVE', $payload)->assertAccepted();
+        }
+
+        $this->waveWebhook('WAVE', $payload)->assertStatus(429);
+    }
+
     public function test_paid_is_irreversible_and_unknown_is_not_downgraded_by_an_open_checkout(): void
     {
         [$payment] = $this->payment();

@@ -25,5 +25,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('auth-token', function (Request $request): Limit {
             return Limit::perMinute(5)->by($request->ip());
         });
+        RateLimiter::for('webhook-wave', function (Request $request): Limit {
+            return Limit::perMinute(120)->by('webhook-wave:'.strtoupper((string) $request->route('provider')).':'.$request->ip());
+        });
     }
 }

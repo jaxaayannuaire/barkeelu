@@ -28,7 +28,7 @@ Route::prefix('v1')->group(function (): void {
     Route::post('checkout-sessions/{checkout}/confirm', [CheckoutSessionController::class, 'confirm']);
     Route::post('checkout-sessions/{checkout}/payments', [CheckoutSessionController::class, 'payments']);
     Route::get('checkout-sessions/{checkout}/status', [CheckoutSessionController::class, 'status']);
-    Route::post('webhooks/{provider}', [WebhookController::class, 'store'])->middleware('throttle:auth-token');
+    Route::post('webhooks/{provider}', [WebhookController::class, 'store'])->middleware('throttle:webhook-wave');
 
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('me/campaigns', [CampaignController::class, 'mine']);
