@@ -83,10 +83,13 @@ class PublicDonationFlowTest extends TestCase
         $this->post(route('donations.amount', $campaign->slug), ['nominal_amount' => 2000]);
         $checkout = CheckoutSession::query()->firstOrFail();
 
-        $this->post(route('donations.details', [$campaign->slug, $checkout->public_id]), [
+        $response = $this->post(route('donations.details', [$campaign->slug, $checkout->public_id]), [
             'donor_name' => 'Awa',
             'payer_mobile' => '771234567',
-        ])->assertSessionHasErrors('payer_mobile');
+        ]);
+        $response->assertSessionHasErrors('payer_mobile')
+            ->assertSessionMissing('_old_input.payer_mobile')
+            ->assertSessionHasInput('donor_name', 'Awa');
         $this->post(route('donations.details', [$campaign->slug, $checkout->public_id]), ['donor_name' => 'Awa'])
             ->assertSessionHasErrors('payer_mobile');
 
@@ -121,7 +124,8 @@ class PublicDonationFlowTest extends TestCase
         $this->assertIsArray($quoted->donor_snapshot);
         $this->assertSame('Awa Ndiaye', $quoted->donor_snapshot['name']);
         $this->assertSame('awa@example.test', $quoted->donor_snapshot['email']);
-        $this->assertSame('+221771234567', $quoted->donor_snapshot['phone']);
+        $this->assertArrayNotHasKey('phone', $quoted->donor_snapshot);
+        $this->assertSame('+221771234567', $quoted->payer_mobile_encrypted);
         $this->assertGreaterThanOrEqual($quoted->nominal_amount, $quoted->total_payable_amount);
         $this->assertSame(0, Donation::query()->count());
         $this->assertSame(0, Payment::query()->count());
@@ -228,6 +232,7 @@ class PublicDonationFlowTest extends TestCase
         $this->app->instance(ProviderGatewayResolver::class, $resolver);
 
         $this->post(route('donations.pay', [$campaign->slug, $checkout->public_id]))->assertRedirect(route('donations.waiting.checkout', [$campaign->slug, $checkout->public_id]));
+        $this->assertNull($checkout->refresh()->payer_mobile_encrypted);
         $this->get(route('donations.status.checkout', [$campaign->slug, $checkout->public_id]))
             ->assertOk()
             ->assertJson(['checkout_status' => 'UNKNOWN', 'payment_status' => 'UNKNOWN'])

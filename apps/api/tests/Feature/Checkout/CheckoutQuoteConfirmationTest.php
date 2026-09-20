@@ -23,6 +23,7 @@ use App\Services\Checkout\CheckoutSessionService;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -47,6 +48,22 @@ class CheckoutQuoteConfirmationTest extends TestCase
         $this->assertSame('HALF_UP_INTEGER', $quoted->fee_snapshot['fees'][0]['rounding_rule']);
         $this->assertSame('Awa', $quoted->donor_snapshot['name']);
         $this->assertSame(0, AppliedFee::query()->count());
+    }
+
+    public function test_quote_keeps_payer_mobile_encrypted_outside_donor_snapshot_and_quote_history(): void
+    {
+        [$campaign] = $this->campaignContext();
+        $this->policy('PLATFORM_FEE_PII', FeeType::PLATFORM_FEE, 250, true);
+        $session = app(CheckoutQuoteService::class)->quote($this->createCheckout($campaign), $this->donorInput());
+
+        $this->assertArrayNotHasKey('phone', $session->donor_snapshot);
+        $this->assertSame('+221770000000', $session->payer_mobile_encrypted);
+        $this->assertNotSame('+221770000000', DB::table('checkout_sessions')->where('id', $session->id)->value('payer_mobile_encrypted'));
+        $this->assertStringNotContainsString('+221770000000', $session->toJson());
+
+        $session->update(['quote_expires_at' => now()->subMinute()]);
+        $renewed = app(CheckoutQuoteService::class)->quote($session->refresh(), $this->donorInput());
+        $this->assertArrayNotHasKey('donor_snapshot', $renewed->fee_snapshot['quote_history'][0]);
     }
 
     public function test_inactive_payout_policy_is_excluded_without_any_hardcoded_rate(): void
@@ -106,11 +123,11 @@ class CheckoutQuoteConfirmationTest extends TestCase
 
         $history = $session->fee_snapshot['quote_history'];
         $this->assertCount(2, $history);
-        $this->assertSame(['D2', 'D1'], array_column(array_column($history, 'donor_snapshot'), 'name'));
         foreach ($history as $entry) {
             $this->assertArrayNotHasKey('quote_history', $entry);
             $this->assertArrayNotHasKey('quote_history', $entry['fee_snapshot']);
             $this->assertArrayNotHasKey('confirmation', $entry['fee_snapshot']);
+            $this->assertArrayNotHasKey('donor_snapshot', $entry);
         }
     }
 

@@ -118,7 +118,6 @@ class DonationFlowController extends Controller
         try {
             $result = $checkoutPayments->initiate($session, $account, [
                 'idempotency_key' => $paymentKey,
-                'payer_mobile' => $session->donor_snapshot['phone'] ?? null,
                 'success_url' => $waiting,
                 'error_url' => $waiting,
             ]);
@@ -168,7 +167,6 @@ class DonationFlowController extends Controller
         try {
             $result = $checkoutPayments->initiate($session, $account, [
                 'idempotency_key' => $paymentKey,
-                'payer_mobile' => $session->donor_snapshot['phone'] ?? null,
                 'success_url' => $waiting,
                 'error_url' => $waiting,
             ]);

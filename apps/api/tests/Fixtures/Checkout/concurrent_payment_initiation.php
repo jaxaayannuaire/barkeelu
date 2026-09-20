@@ -26,7 +26,7 @@ $session = CheckoutSession::query()->findOrFail((int) $argv[1]);
 $account = ProviderAccount::query()->findOrFail((int) $argv[2]);
 $result = $app->make(CheckoutPaymentService::class)->initiate($session, $account, [
     'idempotency_key' => 'payment-concurrent',
-    'payer_mobile' => '+221771234567',
+    'payer_mobile' => '+221770000000',
     'success_url' => 'https://barkeelu.test/success',
     'error_url' => 'https://barkeelu.test/error',
 ]);

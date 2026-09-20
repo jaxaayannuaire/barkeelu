@@ -30,8 +30,19 @@ class CheckoutPaymentService
                 throw new DomainException('Checkout sans Donation.');
             }
 
-            $hash = $this->paymentContentHash($locked->donation_id, $account->id, $locked->total_payable_amount, $locked->currency, $input);
             $existing = Payment::query()->where('idempotency_key', $input['idempotency_key'])->lockForUpdate()->first();
+            if ($existing !== null
+                && is_string($input['payer_mobile'] ?? null)
+                && $existing->payer_mobile_encrypted !== null
+                && ! hash_equals($existing->payer_mobile_encrypted, $input['payer_mobile'])) {
+                throw new DomainException('Conflit d’idempotence initiation Payment.');
+            }
+            $payerMobile = $this->payerMobile($locked, $existing, $input);
+            if ($payerMobile === null) {
+                throw new DomainException('Téléphone payeur requis pour initier le Payment.');
+            }
+            $paymentInput = array_merge($input, ['payer_mobile' => $payerMobile]);
+            $hash = $this->paymentContentHash($locked->donation_id, $account->id, $locked->total_payable_amount, $locked->currency, $paymentInput);
             if ($existing !== null) {
                 if (! hash_equals($existing->content_hash, $hash)) {
                     throw new DomainException('Conflit d’idempotence initiation Payment.');
@@ -40,7 +51,7 @@ class CheckoutPaymentService
                     throw new DomainException('Payment UNKNOWN : retrieve provider obligatoire.');
                 }
 
-                return [$locked, $existing, false];
+                return [$locked, $existing, false, $payerMobile];
             }
 
             if (! in_array($locked->status, [CheckoutStatus::CONFIRMED, CheckoutStatus::FAILED], true)) {
@@ -59,24 +70,25 @@ class CheckoutPaymentService
                 'idempotency_key' => $input['idempotency_key'],
                 'content_hash' => $hash,
             ]);
+            $payment->update(['payer_mobile_encrypted' => $payerMobile]);
             $locked->update(['last_payment_id' => $payment->id]);
 
-            return [$locked->refresh(), $payment->refresh(), true];
+            return [$locked->refresh(), $payment->refresh(), true, $payerMobile];
         }, 3);
 
-        [$locked, $payment, $shouldInitiate] = $prepared;
+        [$locked, $payment, $shouldInitiate, $payerMobile] = $prepared;
         if (! $shouldInitiate || $payment->status !== PaymentStatus::CREATED) {
             return new CheckoutPaymentResult($payment);
         }
 
         $gateway = $this->gateways->for($account);
         $result = $gateway->initiate($payment, [
-            'payer_mobile' => $input['payer_mobile'],
+            'payer_mobile' => $payerMobile,
             'success_url' => $input['success_url'],
             'error_url' => $input['error_url'],
         ]);
 
-        $updatedPayment = DB::transaction(function () use ($payment, $locked, $result, $input): Payment {
+        $updatedPayment = DB::transaction(function () use ($payment, $locked, $result, $payerMobile): Payment {
             $session = CheckoutSession::query()->lockForUpdate()->findOrFail($locked->id);
             $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
 
@@ -87,8 +99,9 @@ class CheckoutPaymentService
                     'provider_client_reference' => $result->providerReference,
                     'provider_checkout_expires_at' => $result->expiresAt,
                     'provider_status' => $result->providerStatus,
-                    'payer_mobile_encrypted' => $input['payer_mobile'],
+                    'payer_mobile_encrypted' => $payerMobile,
                 ]);
+                $this->purgeCheckoutMobile($session);
                 $this->transitionIfNeeded($session, CheckoutStatus::PAYMENT_PENDING);
             } elseif ($result->status->value === 'SENT_UNKNOWN') {
                 $payment->update([
@@ -97,8 +110,9 @@ class CheckoutPaymentService
                     'provider_checkout_session_id' => $result->operationReference,
                     'provider_client_reference' => $result->providerReference,
                     'provider_checkout_expires_at' => $result->expiresAt,
-                    'payer_mobile_encrypted' => $input['payer_mobile'],
+                    'payer_mobile_encrypted' => $payerMobile,
                 ]);
+                $this->purgeCheckoutMobile($session);
                 $this->transitionIfNeeded($session, CheckoutStatus::UNKNOWN, true);
             } else {
                 $payment->update(['status' => PaymentStatus::FAILED, 'provider_status' => 'NOT_SENT']);
@@ -180,5 +194,30 @@ class CheckoutPaymentService
             'success_url' => $input['success_url'],
             'error_url' => $input['error_url'],
         ], JSON_THROW_ON_ERROR));
+    }
+
+    private function payerMobile(CheckoutSession $session, ?Payment $existing, array $input): ?string
+    {
+        $payment = $existing ?? ($session->last_payment_id === null ? null : Payment::query()->find($session->last_payment_id));
+        $legacyMobile = $session->donor_snapshot['phone'] ?? null;
+        $mobile = $payment?->payer_mobile_encrypted
+            ?? $session->payer_mobile_encrypted
+            ?? $legacyMobile
+            ?? ($input['payer_mobile'] ?? null);
+
+        return is_string($mobile) && $mobile !== '' ? $mobile : null;
+    }
+
+    private function purgeCheckoutMobile(CheckoutSession $session): void
+    {
+        $snapshot = $session->donor_snapshot;
+        if (is_array($snapshot)) {
+            unset($snapshot['phone']);
+        }
+
+        $session->update([
+            'payer_mobile_encrypted' => null,
+            'donor_snapshot' => $snapshot,
+        ]);
     }
 }

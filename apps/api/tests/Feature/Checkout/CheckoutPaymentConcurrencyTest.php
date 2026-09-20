@@ -144,7 +144,7 @@ class CheckoutPaymentConcurrencyTest extends TestCase
     {
         return [
             'idempotency_key' => $key,
-            'payer_mobile' => '+221771234567',
+            'payer_mobile' => '+221770000000',
             'success_url' => 'https://barkeelu.test/success',
             'error_url' => 'https://barkeelu.test/error',
         ];

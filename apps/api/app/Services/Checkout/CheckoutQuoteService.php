@@ -29,7 +29,6 @@ class CheckoutQuoteService
             $donorSnapshot = [
                 'name' => $input['name'] ?? null,
                 'email' => $input['email'] ?? null,
-                'phone' => $input['phone'] ?? null,
                 'is_anonymous' => (bool) ($input['is_anonymous'] ?? false),
                 'show_name' => (bool) ($input['show_name'] ?? false),
                 'show_amount' => (bool) ($input['show_amount'] ?? false),
@@ -99,6 +98,7 @@ class CheckoutQuoteService
                     'quote_history' => $previousSnapshot,
                 ],
                 'donor_snapshot' => $donorSnapshot,
+                'payer_mobile_encrypted' => $input['phone'] ?? $locked->payer_mobile_encrypted,
                 'quote_expires_at' => $quoteExpiresAt,
             ]);
 
@@ -117,7 +117,6 @@ class CheckoutQuoteService
                 'nominal_amount' => $feeSnapshot['nominal_amount'] ?? null,
                 'total_payable_amount' => $feeSnapshot['total_payable_amount'] ?? null,
             ],
-            'donor_snapshot' => $entry['donor_snapshot'] ?? null,
             'quote_expires_at' => $entry['quote_expires_at'] ?? null,
         ];
     }

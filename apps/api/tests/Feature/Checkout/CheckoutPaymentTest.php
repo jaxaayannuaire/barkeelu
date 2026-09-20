@@ -56,6 +56,8 @@ class CheckoutPaymentTest extends TestCase
         $this->assertSame($session->donation_id, $result->payment->donation_id);
         $this->assertSame('https://pay.test/session-1', $result->redirectUrl);
         $this->assertSame(1, $session->donation()->count());
+        $this->assertSame('+221770000000', $result->payment->payer_mobile_encrypted);
+        $this->assertNull($session->refresh()->payer_mobile_encrypted);
     }
 
     public function test_same_initiation_key_is_idempotent_and_different_content_conflicts(): void
@@ -84,6 +86,8 @@ class CheckoutPaymentTest extends TestCase
 
         $this->assertSame(PaymentStatus::FAILED, $result->payment->status);
         $this->assertSame(CheckoutStatus::CONFIRMED, $session->refresh()->status);
+        $this->assertSame('+221770000000', $result->payment->payer_mobile_encrypted);
+        $this->assertSame('+221770000000', $session->payer_mobile_encrypted);
     }
 
     public function test_sent_unknown_persists_provider_evidence_without_changing_unknown_states(): void
@@ -108,7 +112,59 @@ class CheckoutPaymentTest extends TestCase
         $this->assertSame('wave-unknown-client-reference', $payment->provider_client_reference);
         $this->assertNotNull($payment->provider_checkout_expires_at);
         $this->assertSame($expiresAt, $payment->provider_checkout_expires_at->toIso8601String());
-        $this->assertSame('+221771234567', $payment->payer_mobile_encrypted);
+        $this->assertSame('+221770000000', $payment->payer_mobile_encrypted);
+        $this->assertNull($session->refresh()->payer_mobile_encrypted);
+    }
+
+    public function test_failed_retry_uses_mobile_encrypted_on_previous_payment(): void
+    {
+        [$session, $account] = $this->confirmedCheckout();
+        $gateway = Mockery::mock(PaymentProviderGateway::class);
+        $gateway->shouldReceive('initiate')->twice()->andReturn(
+            new ProviderInitiationResult(ProviderInitiationStatus::SENT_CONFIRMED, 'wave-first', 'first-ref'),
+            new ProviderInitiationResult(ProviderInitiationStatus::SENT_CONFIRMED, 'wave-retry', 'retry-ref'),
+        );
+        $this->useGateway($gateway);
+        $service = app(CheckoutPaymentService::class);
+
+        $first = $service->initiate($session, $account, $this->paymentInput('attempt-first'));
+        app(PaymentService::class)->applyProviderState($first->payment, [
+            'provider_account_id' => $account->id,
+            'internal_reference' => $first->payment->internal_reference,
+            'amount' => $first->payment->amount,
+            'currency' => $first->payment->currency,
+            'provider_status' => 'FAILED',
+        ]);
+        $service->syncFromPayment($first->payment->refresh());
+
+        $retry = $service->initiate($session->refresh(), $account, [
+            'idempotency_key' => 'attempt-retry',
+            'success_url' => 'https://pay.test/retry',
+            'error_url' => 'https://pay.test/retry',
+        ]);
+
+        $this->assertSame(PaymentStatus::PENDING, $retry->payment->status);
+        $this->assertSame('+221770000000', $retry->payment->payer_mobile_encrypted);
+        $this->assertNull($session->refresh()->payer_mobile_encrypted);
+    }
+
+    public function test_legacy_snapshot_mobile_is_used_once_then_purged_after_provider_emission(): void
+    {
+        [$session, $account] = $this->confirmedCheckout();
+        $legacySnapshot = $session->donor_snapshot;
+        $legacySnapshot['phone'] = '+221781234567';
+        $session->update(['payer_mobile_encrypted' => null, 'donor_snapshot' => $legacySnapshot]);
+        $this->useGateway($this->gateway(new ProviderInitiationResult(ProviderInitiationStatus::SENT_CONFIRMED, 'wave-legacy', 'legacy-ref')));
+
+        $payment = app(CheckoutPaymentService::class)->initiate($session->refresh(), $account, [
+            'idempotency_key' => 'attempt-legacy',
+            'success_url' => 'https://pay.test/legacy',
+            'error_url' => 'https://pay.test/legacy',
+        ])->payment;
+
+        $this->assertSame('+221781234567', $payment->payer_mobile_encrypted);
+        $this->assertNull($session->refresh()->payer_mobile_encrypted);
+        $this->assertArrayNotHasKey('phone', $session->donor_snapshot);
     }
 
     public function test_sent_unknown_blocks_retry_and_retrieve_can_resolve_to_paid(): void
@@ -207,7 +263,7 @@ class CheckoutPaymentTest extends TestCase
     {
         return [
             'idempotency_key' => $key,
-            'payer_mobile' => '+221771234567',
+            'payer_mobile' => '+221770000000',
             'success_url' => 'https://barkeelu.test/success',
             'error_url' => 'https://barkeelu.test/error',
         ];

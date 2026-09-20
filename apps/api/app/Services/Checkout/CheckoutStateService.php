@@ -53,6 +53,14 @@ class CheckoutStateService
             if ($target === CheckoutStatus::CONFIRMED && $locked->confirmed_at === null) {
                 $locked->confirmed_at = now();
             }
+            if (in_array($target, [CheckoutStatus::EXPIRED, CheckoutStatus::CANCELLED], true)) {
+                $snapshot = $locked->donor_snapshot;
+                if (is_array($snapshot)) {
+                    unset($snapshot['phone']);
+                }
+                $locked->donor_snapshot = $snapshot;
+                $locked->payer_mobile_encrypted = null;
+            }
             $locked->save();
 
             return $locked->refresh();

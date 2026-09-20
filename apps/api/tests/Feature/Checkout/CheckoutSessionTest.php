@@ -156,13 +156,30 @@ class CheckoutSessionTest extends TestCase
                 'currency' => 'XOF', 'nominal_amount' => 100, 'idempotency_key' => 'expired-'.$status->value,
             ]);
             $session->update(['status' => $status]);
+            $session->update(['payer_mobile_encrypted' => '+221770000000']);
             Carbon::setTestNow($session->created_at->addHours(2));
             try {
-                $this->assertSame(CheckoutStatus::EXPIRED, $states->transition($session->refresh(), CheckoutStatus::EXPIRED)->status);
+                $expired = $states->transition($session->refresh(), CheckoutStatus::EXPIRED);
+                $this->assertSame(CheckoutStatus::EXPIRED, $expired->status);
+                $this->assertNull($expired->payer_mobile_encrypted);
             } finally {
                 Carbon::setTestNow();
             }
         }
+    }
+
+    public function test_cancelled_checkout_purges_its_encrypted_payer_mobile(): void
+    {
+        [$campaign] = $this->campaignContext();
+        $session = app(CheckoutSessionService::class)->create($campaign, null, [
+            'currency' => 'XOF', 'nominal_amount' => 100, 'idempotency_key' => 'cancelled-pii',
+        ]);
+        $session->update(['payer_mobile_encrypted' => '+221770000000']);
+
+        $cancelled = app(CheckoutStateService::class)->transition($session, CheckoutStatus::CANCELLED);
+
+        $this->assertSame(CheckoutStatus::CANCELLED, $cancelled->status);
+        $this->assertNull($cancelled->payer_mobile_encrypted);
     }
 
     public function test_expiration_before_deadline_and_unknown_without_evidence_are_rejected(): void
