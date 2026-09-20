@@ -258,6 +258,7 @@ class PublicDonationFlowTest extends TestCase
         $retryResolver = Mockery::mock(ProviderGatewayResolver::class);
         $retryResolver->shouldReceive('for')->once()->andReturn($retryGateway);
         $this->app->instance(ProviderGatewayResolver::class, $retryResolver);
+        $campaign->update(['fundraising_status' => CampaignFundraisingStatus::CLOSED]);
         $this->post(route('donations.retry.checkout', [$campaign->slug, $checkout->public_id]))->assertRedirect('https://pay.test/retry');
 
         $this->assertSame(2, Payment::query()->count());
@@ -277,6 +278,7 @@ class PublicDonationFlowTest extends TestCase
         $this->app->instance(ProviderGatewayResolver::class, $resolver);
 
         $this->post(route('donations.pay', [$campaign->slug, $checkout->public_id]))->assertRedirect(route('donations.waiting.checkout', [$campaign->slug, $checkout->public_id]));
+        $campaign->update(['fundraising_status' => CampaignFundraisingStatus::PAUSED]);
         $this->post(route('donations.verify.checkout', [$campaign->slug, $checkout->public_id]))
             ->assertRedirect(route('donations.thanks.checkout', [$campaign->slug, $checkout->public_id]));
         $this->assertSame('PAID', $checkout->refresh()->status->value);
@@ -359,6 +361,14 @@ class PublicDonationFlowTest extends TestCase
         ];
     }
 
+    public static function pausedOrClosedCampaigns(): array
+    {
+        return [
+            'paused' => [CampaignFundraisingStatus::PAUSED],
+            'closed' => [CampaignFundraisingStatus::CLOSED],
+        ];
+    }
+
     public function test_expired_checkout_without_payment_renders_expired_terminal_page(): void
     {
         $campaign = $this->campaign();
@@ -383,6 +393,85 @@ class PublicDonationFlowTest extends TestCase
             ->assertOk()
             ->assertSee('Cette session de paiement a été annulée.')
             ->assertDontSee('Réessayer le paiement');
+    }
+
+    #[DataProvider('pausedOrClosedCampaigns')]
+    public function test_existing_checkout_terminal_pages_remain_accessible_after_campaign_closure(CampaignFundraisingStatus $fundraisingStatus): void
+    {
+        [$campaign, $checkout] = $this->confirmedCheckout();
+        $pending = Payment::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'donation_id' => $checkout->donation_id,
+            'provider_account_id' => $this->providerAccount()->id,
+            'provider' => 'WAVE',
+            'internal_reference' => 'pay-pending-'.$checkout->public_id,
+            'currency' => 'XOF',
+            'amount' => $checkout->total_payable_amount,
+            'status' => PaymentStatus::PENDING,
+            'idempotency_key' => 'pending-'.$checkout->public_id,
+            'content_hash' => hash('sha256', 'pending'),
+        ]);
+        $checkout->update(['status' => CheckoutStatus::PAYMENT_PENDING, 'last_payment_id' => $pending->id]);
+        $campaign->update(['fundraising_status' => $fundraisingStatus]);
+
+        $this->get(route('donations.waiting.checkout', [$campaign->slug, $checkout->public_id]))->assertOk();
+        $this->get(route('donations.status.checkout', [$campaign->slug, $checkout->public_id]))
+            ->assertOk()
+            ->assertJson(['checkout_status' => 'PAYMENT_PENDING', 'payment_status' => 'PENDING']);
+
+        $pending->update(['status' => PaymentStatus::PAID, 'paid_at' => now()]);
+        $checkout->update(['status' => CheckoutStatus::PAID]);
+        $this->get(route('donations.thanks.checkout', [$campaign->slug, $checkout->public_id]))->assertOk();
+
+        $failed = Payment::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'donation_id' => $checkout->donation_id,
+            'provider_account_id' => $pending->provider_account_id,
+            'provider' => 'WAVE',
+            'internal_reference' => 'pay-failed-'.$checkout->public_id,
+            'currency' => 'XOF',
+            'amount' => $checkout->total_payable_amount,
+            'status' => PaymentStatus::FAILED,
+            'idempotency_key' => 'failed-'.$checkout->public_id,
+            'content_hash' => hash('sha256', 'failed'),
+        ]);
+        $checkout->update(['status' => CheckoutStatus::FAILED, 'last_payment_id' => $failed->id]);
+        $this->get(route('donations.failed.checkout', [$campaign->slug, $checkout->public_id]))->assertOk();
+
+        $this->get(route('donations.amount', $campaign->slug))->assertNotFound();
+        $this->post(route('donations.amount', $campaign->slug), ['nominal_amount' => 10_000])->assertNotFound();
+    }
+
+    public function test_checkout_terminal_rejects_a_slug_from_another_campaign(): void
+    {
+        [$campaign, $checkout] = $this->confirmedCheckout();
+        $otherCampaign = $this->campaign();
+        $payment = Payment::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'donation_id' => $checkout->donation_id,
+            'provider_account_id' => $this->providerAccount()->id,
+            'provider' => 'WAVE',
+            'internal_reference' => 'pay-slug-'.$checkout->public_id,
+            'currency' => 'XOF',
+            'amount' => $checkout->total_payable_amount,
+            'status' => PaymentStatus::PENDING,
+            'idempotency_key' => 'slug-'.$checkout->public_id,
+            'content_hash' => hash('sha256', 'slug'),
+        ]);
+        $checkout->update(['status' => CheckoutStatus::PAYMENT_PENDING, 'last_payment_id' => $payment->id]);
+
+        $this->get(route('donations.waiting.checkout', [$otherCampaign->slug, $checkout->public_id]))->assertNotFound();
+    }
+
+    public function test_private_and_targeted_campaigns_cannot_start_a_checkout(): void
+    {
+        foreach ([CampaignVisibility::PRIVATE, CampaignVisibility::TARGETED] as $visibility) {
+            $campaign = $this->campaign();
+            $campaign->update(['visibility' => $visibility]);
+
+            $this->get(route('donations.amount', $campaign->slug))->assertNotFound();
+            $this->post(route('donations.amount', $campaign->slug), ['nominal_amount' => 10_000])->assertNotFound();
+        }
     }
 
     public function test_waiting_pages_keep_unknown_and_pending_actions_safe_without_javascript(): void
