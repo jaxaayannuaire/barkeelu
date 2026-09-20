@@ -23,7 +23,8 @@
 | Donation / CheckoutSession / Payment / Provider accounts / Webhooks | Réalisé |
 | Refund / Payout / Reconciliation MVP | Réalisé |
 | Parcours SSR terminal et transparence frais | Réalisé |
-| Wave sandbox / E2E réel | Planifié |
+| Wave locale durcie 09C1 | Réalisé |
+| Wave Business Portal / micro-transaction réelle | Planifié |
 | Barkeelu Live data-only | Planifié |
 | Flutter | Planifié |
 | Production | Non autorisée |
@@ -41,13 +42,22 @@
 - corriger libellé technique restant dans `thanks` ;
 - conserver pages terminales après pause ou clôture campagne.
 
-### 09C — Validation Wave sandbox / E2E
+### 09C1 — Durcissement Wave local
 
-- secrets runtime hors Git ;
-- checkout signé et webhook signé ;
-- doublons, ordre inversé, `UNKNOWN` et retrieve ;
-- `PAID`, `FAILED`, `EXPIRED`, montant, devise et compte provider ;
-- ledger et `AppliedFee` seulement après `PAID`.
+Terminé : initiations ambiguës, webhooks stricts, compte `WAVE`, throttle
+ dédié et réconciliation `UNKNOWN` par session ou `client_reference`.
+
+### 09C2 — Webhook Tester Wave Business Portal
+
+- configurer secrets runtime hors Git ;
+- valider signature, persistance, déduplication, ordre et compte Wave réel ;
+- recalibrer `webhook-wave` à partir des observations E2E.
+
+### 09C3 — Micro-transaction réelle contrôlée
+
+- exécuter une micro-transaction autorisée et traçable ;
+- vérifier `PAID`, `FAILED`, `UNKNOWN`, montant, devise, session, `AppliedFee` et ledger ;
+- décider production readiness seulement après 09C3.
 
 ## Phases suivantes
 

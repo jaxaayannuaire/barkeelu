@@ -19,22 +19,49 @@ serveur d'un `Payment` `PAID` : postings ledger et `AppliedFee` issus du snapsho
 confirmé. Une Donation peut avoir plusieurs Payments ; un second succès reste
 traçable vers `UNAPPLIED_FUNDS`.
 
-## Paiements et webhooks
+## Paiements et webhooks Wave
 
-Les fournisseurs passent par `PaymentProviderGateway`. `WaveGateway` et son
-checkout sont intégrés côté code. Le navigateur est seulement une UX : webhook,
-vérification fournisseur et `PaymentService` restent autorités métier. Les
-webhooks bruts sont persistés, dédupliqués et traités par queue. Une signature
-invalide n'a aucun effet métier ; un résultat ambigu reste `UNKNOWN`.
+`PaymentProviderGateway` isole Wave du domaine métier. Le navigateur reste un
+signal UX : webhook signé ou vérification serveur, puis `PaymentService`, sont
+les seules autorités de transition financière.
 
-Wave n'est pas validé E2E réel et n'est pas production-ready. Secrets et
-configuration runtime restent hors Git.
+Une initiation Wave devient `SENT_UNKNOWN` après `429`, `5xx`, timeout ou
+réponse `2xx` incomplète. Les erreurs `400`, `401`, `403`, `422` et locales
+déterministes deviennent `NOT_SENT`. Après `UNKNOWN`, aucun retry aveugle ni
+second `POST` checkout n'est autorisé. Aucun `AppliedFee` ni posting ledger
+n'existe avant `PAID`.
+
+Les webhooks bruts sont persistés, dédupliqués et traités par queue. Un
+`checkout.session.payment_failed` minimal est corrélé strictement par
+`provider_account_id` et session checkout, puis passe Payment et Checkout à `FAILED` sans
+effet Finance. Un `test.test_event` signé est persisté, dédupliqué et
+`PROCESSED` sans effet métier. Une signature invalide n'a aucun effet.
+
+Le provider canonique est `WAVE`; les frontières acceptent la casse. Un webhook
+requiert exactement un compte Wave actif. Zéro ou plusieurs comptes actifs sont
+rejetés. Multi-compte explicite reste futur.
+
+`webhook-wave` limite à 120 requêtes/minute par provider normalisé et IP. La
+signature et la déduplication restent protections métier principales. Ce seuil
+sera recalibré après E2E réel.
+
+Pour résoudre `UNKNOWN`, Wave est interrogé directement si la session provider
+est connue. Sinon, Barkeelu cherche uniquement par `client_reference` persistée
+et égale à `internal_reference`: zéro ou plusieurs résultats restent `UNKNOWN`;
+un résultat unique doit valider référence, montant et devise avant mémorisation
+de session et mapping. Aucune recherche par téléphone ou montant seul. `PAID`
+reste irréversible; frais et ledger passent uniquement par `PaymentService`.
+
+Validation locale automatisée seulement. Wave Checkout ne fournit pas de
+sandbox; aucun test Wave Business Portal, aucune micro-transaction réelle et
+aucune activation production n'ont eu lieu. Secrets runtime restent hors Git.
 
 ## Statut
 
 Parcours Donation / Checkout SSR et domaines Finance MVP sont implémentés et
-testés. Activation d'encaissement réelle reste interdite avant validation Wave
-sandbox/E2E, sécurité PII CheckoutSession et revue opérationnelle.
+testés localement. Activation d'encaissement réelle reste interdite avant
+Webhook Tester Wave Business Portal, micro-transaction contrôlée, validation
+des secrets et revue opérationnelle.
 
 ## Stack cible
 

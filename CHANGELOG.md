@@ -1,5 +1,27 @@
 # Barkeelu — CHANGELOG
 
+## 2026-09-20 — Phase 09C1 Wave locale durcie
+
+### Ajouté
+
+- 09C1A : `429`, `5xx`, timeout et réponse `2xx` incomplète deviennent `SENT_UNKNOWN`; erreurs déterministes `400`, `401`, `403`, `422` ou locales deviennent `NOT_SENT` ;
+- 09C1B : `checkout.session.payment_failed` minimal, corrélation stricte `provider_account_id`/session checkout, et `test.test_event` signé persisté, dédupliqué puis `PROCESSED` sans effet métier ;
+- 09C1C : provider canonique `WAVE`, comparaison insensible à la casse aux frontières, rejet sûr sans compte Wave actif unique ;
+- 09C1D : limiter `webhook-wave`, 120 requêtes/minute par provider normalisé et IP, distinct de `throttle:auth-token` ;
+- 09C1E : résolution `UNKNOWN` par GET session ou recherche Wave `client_reference` persistée, avec validation référence/montant/devise et mémorisation de session.
+
+### Garanties
+
+- aucun retry aveugle ni second POST checkout après `UNKNOWN` ;
+- zéro ou plusieurs résultats Wave restent `UNKNOWN`; `PAID` reste irréversible ;
+- `AppliedFee` et ledger passent uniquement par `PaymentService` après `PAID`; `FAILED` reste sans effet Finance ;
+- recherche Wave jamais par téléphone ou montant seul.
+
+### Validation
+
+- suite locale : 197 tests, 1363 assertions, exit 0 ;
+- aucune validation Wave Business Portal ni micro-transaction réelle ; Wave n'est pas production-ready.
+
 ## 2026-09-20 — Parcours public Donation / Checkout
 
 ### Ajouté
