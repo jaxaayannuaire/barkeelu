@@ -59,6 +59,30 @@ class CheckoutConfirmationDonationFactoryTest extends TestCase
         $confirmed = app(CheckoutConfirmationService::class)->confirm($session, ['idempotency_key' => 'confirm-factory']);
 
         $this->assertSame($donation->id, $confirmed->donation_id);
+        $this->assertNull($confirmed->donor_snapshot);
+    }
+
+    public function test_failed_donation_creation_keeps_donor_snapshot(): void
+    {
+        $campaign = $this->campaign();
+        $session = app(CheckoutQuoteService::class)->quote(
+            app(CheckoutSessionService::class)->create($campaign, null, [
+                'currency' => 'XOF', 'nominal_amount' => 10_000, 'idempotency_key' => 'checkout-factory-rollback',
+            ]),
+            ['name' => 'Awa', 'email' => 'awa@example.test', 'phone' => '+221770000000', 'is_anonymous' => false, 'show_name' => true, 'show_amount' => false],
+        );
+        $snapshot = $session->donor_snapshot;
+        $factory = Mockery::mock(DonationFactory::class);
+        $factory->shouldReceive('create')->once()->andThrow(new \DomainException('Donation indisponible.'));
+        app()->instance(DonationFactory::class, $factory);
+
+        try {
+            app(CheckoutConfirmationService::class)->confirm($session, ['idempotency_key' => 'confirm-factory-rollback']);
+            $this->fail('La confirmation aurait dû échouer.');
+        } catch (\DomainException) {
+            $this->assertSame($snapshot, $session->refresh()->donor_snapshot);
+            $this->assertDatabaseCount('donations', 0);
+        }
     }
 
     private function campaign(): Campaign

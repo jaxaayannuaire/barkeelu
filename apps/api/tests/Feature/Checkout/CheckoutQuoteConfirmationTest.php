@@ -147,7 +147,14 @@ class CheckoutQuoteConfirmationTest extends TestCase
         $this->assertSame($confirmed->total_payable_amount, $donation->total_payable_amount);
         $this->assertSame(300, $donation->platform_fee_amount);
         $this->assertSame(50, $donation->payout_provision_amount);
+        $this->assertSame('Awa', $donation->donor_name);
+        $this->assertSame('awa@example.test', $donation->donor_email);
+        $this->assertFalse($donation->is_anonymous);
+        $this->assertNull($confirmed->donor_snapshot);
+        $this->assertStringNotContainsString('awa@example.test', $confirmed->toJson());
+        $this->assertStringNotContainsString('show_name', $confirmed->toJson());
         $this->assertSame($confirmed->donation_id, $retry->donation_id);
+        $this->assertSame(1, Donation::query()->count());
         $this->assertSame(0, AppliedFee::query()->count());
     }
 
@@ -162,13 +169,15 @@ class CheckoutQuoteConfirmationTest extends TestCase
         $service->confirm($confirmed, ['idempotency_key' => 'confirm-b']);
     }
 
-    public function test_same_confirmation_key_with_confirmed_content_altered_is_rejected(): void
+    public function test_same_confirmation_key_with_tampered_confirmation_hash_is_rejected(): void
     {
         [$campaign] = $this->campaignContext();
         $session = app(CheckoutQuoteService::class)->quote($this->createCheckout($campaign), $this->donorInput());
         $service = app(CheckoutConfirmationService::class);
         $confirmed = $service->confirm($session, ['idempotency_key' => 'confirm-content']);
-        $confirmed->update(['donor_snapshot' => array_merge($confirmed->donor_snapshot, ['name' => 'Altéré'])]);
+        $snapshot = $confirmed->fee_snapshot;
+        $snapshot['confirmation']['content_hash'] = hash('sha256', 'tampered');
+        $confirmed->update(['fee_snapshot' => $snapshot]);
 
         $this->expectException(DomainException::class);
         $service->confirm($confirmed->refresh(), ['idempotency_key' => 'confirm-content']);

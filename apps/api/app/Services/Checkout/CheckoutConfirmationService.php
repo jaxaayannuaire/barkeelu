@@ -66,6 +66,7 @@ class CheckoutConfirmationService
                         'content_hash' => $confirmationHash,
                     ],
                 ]),
+                'donor_snapshot' => null,
             ]);
 
             return $locked->refresh();
@@ -75,10 +76,12 @@ class CheckoutConfirmationService
     private function assertConfirmationIdempotence(CheckoutSession $session, array $input): void
     {
         $confirmation = $session->fee_snapshot['confirmation'] ?? null;
-        $currentHash = $this->confirmationContentHash($session);
+        $donation = $session->donation()->lockForUpdate()->first();
         if ($confirmation === null
             || $confirmation['idempotency_key'] !== $input['idempotency_key']
-            || ! hash_equals($confirmation['content_hash'], $currentHash)) {
+            || ! is_string($confirmation['content_hash'] ?? null)
+            || $donation === null
+            || ! hash_equals($confirmation['content_hash'], $donation->content_hash)) {
             throw new DomainException('Conflit d’idempotence confirmation checkout.');
         }
     }
