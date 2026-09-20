@@ -8,10 +8,12 @@ use App\Enums\CampaignFundraisingStatus;
 use App\Enums\CampaignPayoutStatus;
 use App\Enums\CampaignStatus;
 use App\Enums\CampaignVisibility;
+use App\Enums\PaymentStatus;
 use App\Enums\RefundStatus;
 use App\Models\Beneficiary;
 use App\Models\Campaign;
 use App\Models\LedgerAccount;
+use App\Models\LedgerTransaction;
 use App\Models\ProviderAccount;
 use App\Models\User;
 use App\Services\Payments\PaymentService;
@@ -19,7 +21,9 @@ use App\Services\Refunds\RefundService;
 use Database\Seeders\FinancialFoundationSeeder;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\CreatesConfirmedDonations;
 use Tests\TestCase;
 
@@ -69,6 +73,40 @@ class RefundServiceTest extends TestCase
         $this->assertDatabaseHas('ledger_entries', ['ledger_account_id' => LedgerAccount::query()->where('code', 'UNAPPLIED_FUNDS')->value('id'), 'amount' => 50, 'direction' => 'DEBIT']);
         $this->assertDatabaseMissing('ledger_entries', ['ledger_account_id' => LedgerAccount::query()->where('code', 'CAMPAIGN_PAYABLE')->value('id'), 'amount' => 50, 'direction' => 'DEBIT']);
         $this->assertDatabaseHas('ledger_entries', ['ledger_account_id' => LedgerAccount::query()->where('code', 'PROVIDER_FUNDS')->value('id'), 'amount' => 50, 'direction' => 'CREDIT']);
+    }
+
+    #[DataProvider('nonPaidStatuses')]
+    public function test_non_paid_payment_is_rejected_without_refund_or_financial_effect(PaymentStatus $status): void
+    {
+        [$payment, $user] = $this->paidPayment();
+        $payment->update(['status' => $status]);
+        $ledgerTransactions = LedgerTransaction::query()->count();
+        $outboxEvents = DB::table('outbox_events')->count();
+
+        try {
+            app(RefundService::class)->request($payment, $user, ['amount' => 20, 'currency' => 'XOF', 'idempotency_key' => 'refund-'.$status->value]);
+            $this->fail('Le refund non PAID doit être refusé.');
+        } catch (DomainException $exception) {
+            $this->assertSame('Un refund exige un Payment PAID.', $exception->getMessage());
+        }
+
+        $this->assertDatabaseCount('refunds', 0);
+        $this->assertSame(0, $payment->refresh()->reserved_refund_amount);
+        $this->assertDatabaseCount('ledger_transactions', $ledgerTransactions);
+        $this->assertDatabaseCount('outbox_events', $outboxEvents);
+    }
+
+    public static function nonPaidStatuses(): array
+    {
+        return [
+            'created' => [PaymentStatus::CREATED],
+            'pending' => [PaymentStatus::PENDING],
+            'processing' => [PaymentStatus::PROCESSING],
+            'unknown' => [PaymentStatus::UNKNOWN],
+            'failed' => [PaymentStatus::FAILED],
+            'cancelled' => [PaymentStatus::CANCELLED],
+            'expired' => [PaymentStatus::EXPIRED],
+        ];
     }
 
     private function paidPayment(): array

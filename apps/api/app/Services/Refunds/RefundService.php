@@ -2,6 +2,7 @@
 
 namespace App\Services\Refunds;
 
+use App\Enums\PaymentStatus;
 use App\Enums\RefundStatus;
 use App\Models\LedgerAccount;
 use App\Models\LedgerTransaction;
@@ -31,6 +32,9 @@ class RefundService
                 return $existing;
             }
             $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
+            if ($payment->status !== PaymentStatus::PAID) {
+                throw new DomainException('Un refund exige un Payment PAID.');
+            }
             if ($payment->currency !== $input['currency'] || $input['amount'] > $payment->amount - $payment->reserved_refund_amount - $payment->executed_refund_amount) {
                 throw new DomainException('Montant de refund non disponible.');
             }
