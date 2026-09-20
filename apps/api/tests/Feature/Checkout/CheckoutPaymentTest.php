@@ -244,9 +244,37 @@ class CheckoutPaymentTest extends TestCase
             $this->addToAssertionCount(1);
         }
 
+        $result->payment->update(['provider_client_reference' => $result->payment->internal_reference]);
         $resolved = $service->resolveUnknown($result->payment->refresh());
         $this->assertSame(PaymentStatus::PAID, $resolved->status);
         $this->assertSame(CheckoutStatus::PAID, $session->refresh()->status);
+        $this->assertSame('wave-unknown', $resolved->provider_checkout_session_id);
+        $this->assertSame(1, AppliedFee::query()->count());
+        $this->assertDatabaseCount('ledger_transactions', 1);
+
+        $this->expectException(DomainException::class);
+        $service->resolveUnknown($resolved);
+    }
+
+    public function test_unknown_retrieve_failed_persists_session_id_without_financial_effect(): void
+    {
+        [$session, $account] = $this->confirmedCheckout();
+        $gateway = $this->gateway(new ProviderInitiationResult(ProviderInitiationStatus::SENT_UNKNOWN));
+        $gateway->shouldReceive('retrieve')->once()->andReturn(new ProviderStatusResult('FAILED', 'wave-failed', null, 'ref-failed'));
+        $this->useGateway($gateway);
+        $service = app(CheckoutPaymentService::class);
+        $result = $service->initiate($session, $account, $this->paymentInput('attempt-unknown-failed'));
+        $result->payment->update(['provider_client_reference' => $result->payment->internal_reference]);
+
+        $resolved = $service->resolveUnknown($result->payment->refresh());
+
+        $this->assertSame(PaymentStatus::FAILED, $resolved->status);
+        $this->assertSame(CheckoutStatus::FAILED, $session->refresh()->status);
+        $this->assertSame('wave-failed', $resolved->provider_checkout_session_id);
+        $this->assertSame(0, AppliedFee::query()->count());
+        $this->assertDatabaseMissing('ledger_transactions', [
+            'business_key' => 'payment:'.$resolved->public_id.':captured',
+        ]);
     }
 
     public function test_paid_server_side_materializes_checkout_applied_fees_only_at_success(): void

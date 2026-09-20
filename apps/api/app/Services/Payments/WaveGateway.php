@@ -54,7 +54,35 @@ class WaveGateway implements PaymentProviderGateway
 
     public function retrieve(Payment $payment): ProviderStatusResult
     {
-        $response = $this->checkout->retrieve($payment->provider_checkout_session_id);
+        if (filled($payment->provider_checkout_session_id)) {
+            return $this->statusResult($this->checkout->retrieve($payment->provider_checkout_session_id), $payment);
+        }
+
+        if (! filled($payment->provider_client_reference)
+            || ! hash_equals($payment->internal_reference, $payment->provider_client_reference)) {
+            return new ProviderStatusResult('UNKNOWN');
+        }
+
+        $results = $this->checkout->searchByClientReference($payment->provider_client_reference)['result'] ?? null;
+        if (! is_array($results) || count($results) !== 1) {
+            return new ProviderStatusResult('UNKNOWN');
+        }
+
+        $response = $results[0];
+        if (! is_array($response)
+            || ! is_string($response['id'] ?? null)
+            || ! is_string($response['client_reference'] ?? null)
+            || ! hash_equals($payment->provider_client_reference, $response['client_reference'])
+            || (string) $payment->amount !== (string) ($response['amount'] ?? '')
+            || $payment->currency !== ($response['currency'] ?? null)) {
+            return new ProviderStatusResult('UNKNOWN');
+        }
+
+        return $this->statusResult($response, $payment);
+    }
+
+    private function statusResult(array $response, Payment $payment): ProviderStatusResult
+    {
         $checkout = $response['checkout_status'] ?? null;
         $providerStatus = $response['payment_status'] ?? null;
         $status = match (true) {
@@ -68,7 +96,7 @@ class WaveGateway implements PaymentProviderGateway
             $status,
             $response['id'] ?? $payment->provider_checkout_session_id,
             $response['transaction_id'] ?? null,
-            $payment->provider_client_reference,
+            $response['client_reference'] ?? $payment->provider_client_reference,
         );
     }
 

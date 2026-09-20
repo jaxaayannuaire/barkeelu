@@ -85,6 +85,120 @@ class WaveCheckoutTest extends TestCase
         });
     }
 
+    public function test_unknown_with_checkout_session_id_uses_direct_get(): void
+    {
+        [$payment] = $this->payment();
+        $payment->update([
+            'status' => PaymentStatus::UNKNOWN,
+            'provider_checkout_session_id' => 'cos-direct',
+            'provider_client_reference' => $payment->internal_reference,
+        ]);
+        $this->configureWave();
+        Http::fake([
+            'https://api.wave.test/v1/checkout/sessions/cos-direct' => Http::response($this->checkoutPayload($payment, 'cos-direct')),
+        ]);
+
+        $result = app(WaveGateway::class)->retrieve($payment->refresh());
+
+        $this->assertSame('PAID', $result->status);
+        $this->assertSame('cos-direct', $result->operationReference);
+        Http::assertSentCount(1);
+        Http::assertSent(fn (ClientRequest $request): bool => $request->url() === 'https://api.wave.test/v1/checkout/sessions/cos-direct');
+    }
+
+    public function test_unknown_without_checkout_session_id_searches_only_persisted_client_reference(): void
+    {
+        [$payment] = $this->payment();
+        $payment->update([
+            'status' => PaymentStatus::UNKNOWN,
+            'provider_checkout_session_id' => null,
+            'provider_client_reference' => $payment->internal_reference,
+        ]);
+        $this->configureWave();
+        Http::fake([
+            'https://api.wave.test/v1/checkout/sessions/search*' => Http::response([
+                'result' => [$this->checkoutPayload($payment, 'cos-search')],
+            ]),
+        ]);
+
+        $result = app(WaveGateway::class)->retrieve($payment->refresh());
+
+        $this->assertSame('PAID', $result->status);
+        $this->assertSame('cos-search', $result->operationReference);
+        Http::assertSentCount(1);
+        Http::assertSent(function (ClientRequest $request) use ($payment): bool {
+            return $request->method() === 'GET'
+                && $request->url() === 'https://api.wave.test/v1/checkout/sessions/search?client_reference='.urlencode($payment->internal_reference);
+        });
+    }
+
+    public function test_unknown_without_persisted_client_reference_does_not_search(): void
+    {
+        [$payment] = $this->payment();
+        $payment->update([
+            'status' => PaymentStatus::UNKNOWN,
+            'provider_checkout_session_id' => null,
+            'provider_client_reference' => null,
+        ]);
+        $this->configureWave();
+        Http::fake();
+
+        $result = app(WaveGateway::class)->retrieve($payment->refresh());
+
+        $this->assertSame('UNKNOWN', $result->status);
+        Http::assertNothingSent();
+    }
+
+    public function test_unknown_search_keeps_unknown_when_result_is_absent_ambiguous_or_incoherent(): void
+    {
+        [$payment] = $this->payment();
+        $payment->update([
+            'status' => PaymentStatus::UNKNOWN,
+            'provider_checkout_session_id' => null,
+            'provider_client_reference' => $payment->internal_reference,
+        ]);
+        $this->configureWave();
+        $exact = $this->checkoutPayload($payment, 'cos-search');
+        $cases = [
+            [],
+            [array_merge($exact, ['client_reference' => 'other-reference'])],
+            [array_merge($exact, ['amount' => '106'])],
+            [array_merge($exact, ['currency' => 'EUR'])],
+            [$exact, array_merge($exact, ['id' => 'cos-search-2'])],
+        ];
+
+        foreach ($cases as $result) {
+            Http::fake(['https://api.wave.test/v1/checkout/sessions/search*' => Http::response(['result' => $result])]);
+
+            $resolved = app(WaveGateway::class)->retrieve($payment->refresh());
+
+            $this->assertSame('UNKNOWN', $resolved->status);
+            $this->assertNull($resolved->operationReference);
+            Http::assertSentCount(1);
+        }
+    }
+
+    public function test_unknown_search_maps_failed_without_financial_transition(): void
+    {
+        [$payment] = $this->payment();
+        $payment->update([
+            'status' => PaymentStatus::UNKNOWN,
+            'provider_checkout_session_id' => null,
+            'provider_client_reference' => $payment->internal_reference,
+        ]);
+        $this->configureWave();
+        Http::fake([
+            'https://api.wave.test/v1/checkout/sessions/search*' => Http::response([
+                'result' => [$this->checkoutPayload($payment, 'cos-failed', 'expired', 'cancelled')],
+            ]),
+        ]);
+
+        $result = app(WaveGateway::class)->retrieve($payment->refresh());
+
+        $this->assertSame('FAILED', $result->status);
+        $this->assertSame('cos-failed', $result->operationReference);
+    }
+
     public function test_post_errors_after_possible_emission_are_sent_unknown(): void
     {
         [$payment] = $this->payment();
@@ -414,6 +528,28 @@ class WaveCheckoutTest extends TestCase
         [, $account, $payment] = $this->paymentWithDonation();
 
         return [$payment, $account];
+    }
+
+    private function configureWave(): void
+    {
+        config([
+            'services.wave.api_key' => 'wave-api-key',
+            'services.wave.request_signing_secret' => 'request-secret',
+            'services.wave.base_url' => 'https://api.wave.test',
+        ]);
+    }
+
+    private function checkoutPayload(Payment $payment, string $id, string $checkoutStatus = 'complete', string $paymentStatus = 'succeeded'): array
+    {
+        return [
+            'id' => $id,
+            'client_reference' => $payment->internal_reference,
+            'amount' => (string) $payment->amount,
+            'currency' => $payment->currency,
+            'checkout_status' => $checkoutStatus,
+            'payment_status' => $paymentStatus,
+            'transaction_id' => 'transaction-'.$id,
+        ];
     }
 
     private function paymentWithDonation(): array

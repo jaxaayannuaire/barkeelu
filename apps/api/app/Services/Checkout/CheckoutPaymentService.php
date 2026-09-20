@@ -132,6 +132,10 @@ class CheckoutPaymentService
 
         $gateway = $this->gateways->for($payment->providerAccount);
         $result = $gateway->retrieve($payment);
+        if ($payment->provider_checkout_session_id === null && filled($result->operationReference)) {
+            $payment->update(['provider_checkout_session_id' => $result->operationReference]);
+            $payment->refresh();
+        }
         $resolved = $this->payments->applyProviderState($payment, [
             'provider_account_id' => $payment->provider_account_id,
             'internal_reference' => $payment->internal_reference,

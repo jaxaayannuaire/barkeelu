@@ -75,4 +75,21 @@ class WaveCheckoutService
 
         return $response->json();
     }
+
+    public function searchByClientReference(string $clientReference): array
+    {
+        if (! $this->available()) {
+            throw new RuntimeException('Wave nâ€™est pas configurÃ©.');
+        }
+        $timestamp = (string) now()->timestamp;
+        $signature = hash_hmac('sha256', $timestamp, config('services.wave.request_signing_secret'));
+        $response = Http::acceptJson()->withToken(config('services.wave.api_key'))
+            ->withHeaders(['Wave-Signature' => "t={$timestamp},v1={$signature}"])->timeout(10)
+            ->get(rtrim(config('services.wave.base_url'), '/').'/v1/checkout/sessions/search', ['client_reference' => $clientReference]);
+        if (! $response->successful()) {
+            throw new RuntimeException('Recherche Wave indisponible.');
+        }
+
+        return $response->json();
+    }
 }
