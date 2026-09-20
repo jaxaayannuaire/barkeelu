@@ -10,6 +10,7 @@ use App\Enums\CampaignPayoutStatus;
 use App\Enums\CampaignStatus;
 use App\Enums\CampaignVisibility;
 use App\Enums\PaymentStatus;
+use App\Enums\ProviderInitiationStatus;
 use App\Models\Beneficiary;
 use App\Models\Campaign;
 use App\Models\Payment;
@@ -17,6 +18,7 @@ use App\Models\ProviderAccount;
 use App\Models\User;
 use App\Services\Payments\PaymentService;
 use App\Services\Payments\WaveCheckoutService;
+use App\Services\Payments\WaveGateway;
 use App\Services\Payments\WaveWebhookMapper;
 use App\Services\Webhooks\WebhookIngressService;
 use Database\Seeders\FinancialFoundationSeeder;
@@ -75,6 +77,97 @@ class WaveCheckoutTest extends TestCase
                 && isset($matches[1], $matches[2])
                 && hash_equals(hash_hmac('sha256', $matches[1], 'request-secret'), $matches[2]);
         });
+    }
+
+    public function test_post_errors_after_possible_emission_are_sent_unknown(): void
+    {
+        [$payment] = $this->payment();
+        config([
+            'services.wave.api_key' => 'wave-api-key',
+            'services.wave.request_signing_secret' => 'request-secret',
+            'services.wave.base_url' => 'https://api.wave.test',
+        ]);
+
+        foreach ([429, 500, 502, 503] as $status) {
+            Http::fake(['https://api.wave.test/v1/checkout/sessions' => Http::response([], $status)]);
+
+            $result = app(WaveGateway::class)->initiate($payment, [
+                'payer_mobile' => '+221771234567',
+                'success_url' => 'https://barkeelu.test/success',
+                'error_url' => 'https://barkeelu.test/error',
+            ]);
+
+            $this->assertSame(ProviderInitiationStatus::SENT_UNKNOWN, $result->status, "HTTP {$status}");
+            Http::assertSentCount(1);
+        }
+    }
+
+    public function test_timeout_after_post_is_sent_unknown(): void
+    {
+        [$payment] = $this->payment();
+        config([
+            'services.wave.api_key' => 'wave-api-key',
+            'services.wave.request_signing_secret' => 'request-secret',
+            'services.wave.base_url' => 'https://api.wave.test',
+        ]);
+        Http::fake(['https://api.wave.test/v1/checkout/sessions' => Http::failedConnection('timeout')]);
+
+        $result = app(WaveGateway::class)->initiate($payment, [
+            'payer_mobile' => '+221771234567',
+            'success_url' => 'https://barkeelu.test/success',
+            'error_url' => 'https://barkeelu.test/error',
+        ]);
+
+        $this->assertSame(ProviderInitiationStatus::SENT_UNKNOWN, $result->status);
+    }
+
+    public function test_incomplete_success_response_is_sent_unknown(): void
+    {
+        [$payment] = $this->payment();
+        config([
+            'services.wave.api_key' => 'wave-api-key',
+            'services.wave.request_signing_secret' => 'request-secret',
+            'services.wave.base_url' => 'https://api.wave.test',
+        ]);
+        Http::fake(['https://api.wave.test/v1/checkout/sessions' => Http::response(['id' => 'session-1'])]);
+
+        $result = app(WaveGateway::class)->initiate($payment, [
+            'payer_mobile' => '+221771234567',
+            'success_url' => 'https://barkeelu.test/success',
+            'error_url' => 'https://barkeelu.test/error',
+        ]);
+
+        $this->assertSame(ProviderInitiationStatus::SENT_UNKNOWN, $result->status);
+    }
+
+    public function test_deterministic_client_errors_and_local_configuration_failure_are_not_sent(): void
+    {
+        [$payment] = $this->payment();
+        config([
+            'services.wave.api_key' => 'wave-api-key',
+            'services.wave.request_signing_secret' => 'request-secret',
+            'services.wave.base_url' => 'https://api.wave.test',
+        ]);
+
+        foreach ([400, 401, 403, 422] as $status) {
+            Http::fake(['https://api.wave.test/v1/checkout/sessions' => Http::response([], $status)]);
+            $result = app(WaveGateway::class)->initiate($payment, [
+                'payer_mobile' => '+221771234567',
+                'success_url' => 'https://barkeelu.test/success',
+                'error_url' => 'https://barkeelu.test/error',
+            ]);
+            $this->assertSame(ProviderInitiationStatus::NOT_SENT, $result->status, "HTTP {$status}");
+        }
+
+        config(['services.wave.api_key' => null]);
+        Http::fake();
+        $result = app(WaveGateway::class)->initiate($payment, [
+            'payer_mobile' => '+221771234567',
+            'success_url' => 'https://barkeelu.test/success',
+            'error_url' => 'https://barkeelu.test/error',
+        ]);
+        $this->assertSame(ProviderInitiationStatus::NOT_SENT, $result->status);
+        Http::assertNothingSent();
     }
 
     public function test_webhook_signature_accepts_rotation_rejects_stale_and_deduplicates_official_wave_event_id(): void

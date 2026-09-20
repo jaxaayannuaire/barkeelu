@@ -108,6 +108,10 @@ class CheckoutPaymentTest extends TestCase
 
         $this->assertSame(PaymentStatus::UNKNOWN, $payment->status);
         $this->assertSame(CheckoutStatus::UNKNOWN, $session->refresh()->status);
+        $this->assertSame(0, AppliedFee::query()->count());
+        $this->assertDatabaseMissing('ledger_transactions', [
+            'business_key' => 'payment:'.$result->payment->public_id.':captured',
+        ]);
         $this->assertSame('wave-unknown-session', $payment->provider_checkout_session_id);
         $this->assertSame('wave-unknown-client-reference', $payment->provider_client_reference);
         $this->assertNotNull($payment->provider_checkout_expires_at);

@@ -2,6 +2,7 @@
 
 namespace App\Services\Payments;
 
+use App\Exceptions\Payments\AmbiguousProviderInitiationException;
 use App\Models\Payment;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -23,11 +24,15 @@ class WaveCheckoutService
         $signature = hash_hmac('sha256', $timestamp.$body, config('services.wave.request_signing_secret'));
         $response = Http::acceptJson()->withToken(config('services.wave.api_key'))->withHeaders(['Wave-Signature' => "t={$timestamp},v1={$signature}", 'Content-Type' => 'application/json'])->timeout(10)->withBody($body, 'application/json')->post(rtrim(config('services.wave.base_url'), '/').'/v1/checkout/sessions');
         if (! $response->successful()) {
+            if (! in_array($response->status(), [400, 401, 403, 422], true)) {
+                throw new AmbiguousProviderInitiationException('Réponse Wave ambiguë.');
+            }
+
             throw new RuntimeException('Initiation Wave indisponible.');
         }
         $data = $response->json();
         if (! isset($data['id'], $data['wave_launch_url'], $data['when_expires'])) {
-            throw new RuntimeException('Réponse Wave invalide.');
+            throw new AmbiguousProviderInitiationException('Réponse Wave incomplète.');
         }
 
         return $data;

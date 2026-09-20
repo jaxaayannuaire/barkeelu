@@ -6,6 +6,7 @@ use App\Contracts\Payments\PaymentProviderGateway;
 use App\Data\Payments\ProviderInitiationResult;
 use App\Data\Payments\ProviderStatusResult;
 use App\Enums\ProviderInitiationStatus;
+use App\Exceptions\Payments\AmbiguousProviderInitiationException;
 use App\Models\Payment;
 use App\Models\ProviderAccount;
 use Illuminate\Http\Client\ConnectionException;
@@ -34,6 +35,8 @@ class WaveGateway implements PaymentProviderGateway
                 $context['error_url'],
             );
         } catch (ConnectionException) {
+            return new ProviderInitiationResult(ProviderInitiationStatus::SENT_UNKNOWN);
+        } catch (AmbiguousProviderInitiationException) {
             return new ProviderInitiationResult(ProviderInitiationStatus::SENT_UNKNOWN);
         } catch (RuntimeException) {
             return new ProviderInitiationResult(ProviderInitiationStatus::NOT_SENT);
