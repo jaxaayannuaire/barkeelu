@@ -79,7 +79,7 @@ class WaveCheckoutService
     public function searchByClientReference(string $clientReference): array
     {
         if (! $this->available()) {
-            throw new RuntimeException('Wave nâ€™est pas configurÃ©.');
+            throw new RuntimeException('Wave n’est pas configuré.');
         }
         $timestamp = (string) now()->timestamp;
         $signature = hash_hmac('sha256', $timestamp, config('services.wave.request_signing_secret'));
