@@ -10,9 +10,17 @@ class Payment extends Model
 {
     protected $guarded = [];
 
+    protected $hidden = ['payer_mobile_encrypted'];
+
     protected function casts(): array
     {
-        return ['status' => PaymentStatus::class, 'provider_payload' => 'array', 'paid_at' => 'datetime'];
+        return [
+            'status' => PaymentStatus::class,
+            'provider_payload' => 'array',
+            'provider_checkout_expires_at' => 'datetime',
+            'payer_mobile_encrypted' => 'encrypted',
+            'paid_at' => 'datetime',
+        ];
     }
 
     public function getRouteKeyName(): string

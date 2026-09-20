@@ -15,7 +15,8 @@ class WebhookIngressService
     public function receive(ProviderAccount $account, string $rawPayload, array $headers, bool $signatureValid): WebhookEvent
     {
         $payload = json_decode($rawPayload, true, 512, JSON_THROW_ON_ERROR);
-        $eventId = $payload['event_id'] ?? null;
+        // Wave identifie l'événement par « id », les intégrations historiques par « event_id ».
+        $eventId = $payload['event_id'] ?? $payload['id'] ?? null;
         $payloadHash = hash('sha256', $rawPayload);
         $dedupeKey = hash('sha256', implode('|', [$account->id, $eventId ?? $payloadHash, $payloadHash, $signatureValid ? 'valid' : 'invalid']));
 
@@ -43,7 +44,7 @@ class WebhookIngressService
                 'provider_account_id' => $account->id,
                 'provider' => $account->provider,
                 'provider_event_id' => $eventId,
-                'event_type' => $payload['event_type'] ?? null,
+                'event_type' => $payload['event_type'] ?? $payload['type'] ?? null,
                 'signature_valid' => $signatureValid,
                 'headers_redacted' => $this->redactHeaders($headers),
                 'raw_payload' => $rawPayload,

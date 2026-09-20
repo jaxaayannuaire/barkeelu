@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'wave' => [
+        'base_url' => env('WAVE_API_URL', 'https://api.wave.com'),
+        'api_key' => env('WAVE_API_KEY'),
+        'request_signing_secret' => env('WAVE_REQUEST_SIGNING_SECRET'),
+        'webhook_signing_secret' => env('WAVE_WEBHOOK_SIGNING_SECRET'),
+    ],
+
 ];
