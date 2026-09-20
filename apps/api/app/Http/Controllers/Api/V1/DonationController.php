@@ -3,26 +3,28 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreDonationRequest;
 use App\Http\Requests\StorePaymentRequest;
 use App\Http\Resources\DonationResource;
 use App\Http\Resources\PaymentResource;
 use App\Models\Campaign;
 use App\Models\Donation;
 use App\Models\ProviderAccount;
-use App\Services\Donations\DonationService;
 use App\Services\Payments\PaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 
 class DonationController extends Controller
 {
-    public function store(StoreDonationRequest $request, Campaign $campaign, DonationService $service): JsonResponse
+    public function store(Campaign $campaign): JsonResponse
     {
-        abort_unless($campaign->status->value === 'PUBLISHED' && $campaign->fundraising_status->value === 'OPEN', 422);
-        $donation = $service->create($campaign, $request->user(), $request->validated());
-
-        return (new DonationResource($donation))->response()->setStatusCode(201);
+        return response()->json([
+            'message' => 'Endpoint de création directe de Donation déprécié. Utilisez CheckoutSession.',
+            'code' => 'DIRECT_DONATION_ENDPOINT_DEPRECATED',
+            'replacement' => [
+                'method' => 'POST',
+                'path' => '/api/v1/campaigns/'.$campaign->public_id.'/checkout-sessions',
+            ],
+        ], 410);
     }
 
     public function show(Donation $donation): DonationResource
