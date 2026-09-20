@@ -1,22 +1,40 @@
 # Barkeelu.com
 
-## Fondation Donations et Payments
-
-La mission 06B ajoute les intentions de donation, les tentatives de paiement,
-les comptes fournisseur et la persistance des webhooks. Une Donation peut avoir
-plusieurs Payments : un second succès est conservé et comptabilisé vers
-`UNAPPLIED_FUNDS`, sans augmenter automatiquement le nominal de la Donation.
-
-Les webhooks bruts sont persistés avant traitement, dédupliqués et traités par
-queue. Les signatures invalides n'ont aucun effet métier. Aucun fournisseur Wave
-de production n'est activé.
-
 Plateforme de fundraising, crowdfunding, dons, solidarité et impact social.
+
+## Parcours public de don
+
+`CheckoutSession` est le seul parcours public normal. Le CTA campagne ouvre le
+flux SSR montant, coordonnées, quote, confirmation, paiement puis statut.
+L'ancien endpoint direct de création de Donation est déprécié et répond HTTP
+`410 Gone`.
+
+`CheckoutQuoteService` construit le quote serveur depuis les `FeePolicy` actives.
+Le `fee_snapshot` confirmé fournit montant nominal, frais et total payable aux
+vues. `DonationFactory` crée alors une `Donation` `PENDING` depuis ce snapshot.
+Il ne crée ni `AppliedFee`, ni écriture ledger, ni `Payment`.
+
+`PaymentService` reste autorité de matérialisation financière après confirmation
+serveur d'un `Payment` `PAID` : postings ledger et `AppliedFee` issus du snapshot
+confirmé. Une Donation peut avoir plusieurs Payments ; un second succès reste
+traçable vers `UNAPPLIED_FUNDS`.
+
+## Paiements et webhooks
+
+Les fournisseurs passent par `PaymentProviderGateway`. `WaveGateway` et son
+checkout sont intégrés côté code. Le navigateur est seulement une UX : webhook,
+vérification fournisseur et `PaymentService` restent autorités métier. Les
+webhooks bruts sont persistés, dédupliqués et traités par queue. Une signature
+invalide n'a aucun effet métier ; un résultat ambigu reste `UNKNOWN`.
+
+Wave n'est pas validé E2E réel et n'est pas production-ready. Secrets et
+configuration runtime restent hors Git.
 
 ## Statut
 
-Projet en phase d'initialisation technique. Aucun flux d'encaissement, de
-paiement fournisseur, Wave, remboursement ou payout n'est production-ready.
+Parcours Donation / Checkout SSR et domaines Finance MVP sont implémentés et
+testés. Activation d'encaissement réelle reste interdite avant validation Wave
+sandbox/E2E, sécurité PII CheckoutSession et revue opérationnelle.
 
 ## Stack cible
 
@@ -50,16 +68,18 @@ frais appliqués. Les corrections passent par reversal ; l'idempotence repose su
 `business_key` et `content_hash`. Les politiques de frais XOF et une Outbox
 transactionnelle sont disponibles pour les futurs domaines financiers.
 
-La mission 06C ajoute des Refunds et Payouts réservés dans le ledger, avec
+Les Refunds et Payouts sont réservés dans le ledger, avec
 idempotence, séparation `finance_operator` / `finance_approver`, statuts
 `UNKNOWN` pour les réponses fournisseur ambiguës et rapprochement audité. Les
 corrections de reconciliation passent exclusivement par reversal. Les soldes
 Campaign restent des projections non autoritatives : les réservations sont
 matérialisées dans le ledger, via `PAYOUT_RESERVED`.
 
-Cette fondation ne constitue pas une comptabilité légale ou fiscale. Wave de
-production, l'orchestration bancaire complète et les décisions financières
-automatisées ne sont pas implémentés.
+La provision payout reste inactive par défaut. Les frais affichés proviennent
+uniquement du `fee_snapshot` serveur ; aucune valeur de frais n'est recalculée
+dans le navigateur.
+
+Cette fondation ne constitue pas une comptabilité légale ou fiscale.
 
 Référence :
 

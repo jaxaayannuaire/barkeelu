@@ -1,5 +1,29 @@
 # Barkeelu — CHANGELOG
 
+## 2026-09-20 — Parcours public Donation / Checkout
+
+### Ajouté
+
+- ADR-017 appliqué : `CheckoutSession` devient le seul parcours public normal de création de Donation ;
+- quote serveur, snapshot des frais, confirmation et création `Donation` `PENDING` par `DonationFactory` ;
+- CTA campagne vers le parcours SSR de don, avec transparence montant, frais issus du `fee_snapshot` et total payable ;
+- écrans SSR terminaux `PAID`, `FAILED`, `UNKNOWN`, `EXPIRED` et `CANCELLED`, avec fallback sans JavaScript ;
+- abstraction `PaymentProviderGateway`, intégration technique `WaveGateway`, checkout et webhooks serveur ;
+- chiffrement `payer_mobile_encrypted` sur `Payment` et purge planifiée des numéros expirés ;
+- garde-fou Refund : seul un `Payment` `PAID` entre dans le flux de remboursement.
+
+### Modifié
+
+- endpoint direct `POST /api/v1/campaigns/{campaign}/donations` neutralisé : HTTP `410 Gone` ;
+- `DonationService` et `StoreDonationRequest` supprimés ;
+- `AppliedFee` et postings ledger créés uniquement après `Payment` `PAID` par `PaymentService` ;
+- provision `PAYOUT_PROVISION_WORKING` conservée techniquement, inactive par défaut.
+
+### Limites
+
+- Wave est intégré côté code, mais validation E2E réelle, secrets runtime et activation production restent hors périmètre ;
+- téléphone dans `checkout_sessions.donor_snapshot` reste à minimiser ou chiffrer lors de la phase PII dédiée.
+
 ## 2026-09-14 — Refunds, payouts et reconciliation
 
 ### Ajouté
