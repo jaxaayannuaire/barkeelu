@@ -9,8 +9,12 @@ use App\Enums\CampaignFundraisingStatus;
 use App\Enums\CampaignPayoutStatus;
 use App\Enums\CampaignStatus;
 use App\Enums\CampaignVisibility;
+use App\Enums\DonationStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\ProviderInitiationStatus;
+use App\Enums\WebhookEventStatus;
+use App\Jobs\ProcessWebhookEvent;
+use App\Models\AppliedFee;
 use App\Models\Beneficiary;
 use App\Models\Campaign;
 use App\Models\Payment;
@@ -23,6 +27,7 @@ use App\Services\Payments\WaveWebhookMapper;
 use App\Services\Webhooks\WebhookIngressService;
 use Database\Seeders\FinancialFoundationSeeder;
 use DomainException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\DB;
@@ -207,6 +212,91 @@ class WaveCheckoutTest extends TestCase
 
         $this->expectException(DomainException::class);
         $mapper->map($this->payload($payment, 'complete', 'succeeded', ['data' => ['amount' => '106']]), $account->id);
+    }
+
+    public function test_official_minimal_payment_failed_marks_only_correlated_payment_failed(): void
+    {
+        [$payment, $account] = $this->payment();
+        $payment->update([
+            'provider_checkout_session_id' => 'session-failed',
+            'provider_client_reference' => $payment->internal_reference,
+        ]);
+        $payload = [
+            'id' => 'evt-payment-failed',
+            'type' => 'checkout.session.payment_failed',
+            'data' => [
+                'id' => 'session-failed',
+                'checkout_status' => 'failed',
+                'payment_status' => 'failed',
+                'last_error' => ['code' => 'payer_cancelled'],
+            ],
+        ];
+
+        $mapped = app(WaveWebhookMapper::class)->map($payload, $account->id);
+        $this->assertSame('FAILED', $mapped['event']['provider_status']);
+        $this->assertSame($payment->id, $mapped['payment']->id);
+        app(PaymentService::class)->applyProviderState($mapped['payment'], $mapped['event']);
+
+        $this->assertSame(PaymentStatus::FAILED, $payment->refresh()->status);
+        $this->assertSame(DonationStatus::PENDING, $payment->donation->refresh()->status);
+        $this->assertSame(0, AppliedFee::query()->count());
+        $this->assertPendingPaymentHasNoFinancialEffects($payment);
+    }
+
+    public function test_minimal_payment_failed_without_correlated_payment_is_rejected(): void
+    {
+        [, $account] = $this->payment();
+
+        $this->expectException(ModelNotFoundException::class);
+        app(WaveWebhookMapper::class)->map([
+            'id' => 'evt-payment-failed-missing',
+            'type' => 'checkout.session.payment_failed',
+            'data' => ['id' => 'unknown-session', 'checkout_status' => 'failed', 'payment_status' => 'failed'],
+        ], $account->id);
+    }
+
+    public function test_valid_test_event_is_deduplicated_and_has_no_business_effect(): void
+    {
+        [$payment, $account] = $this->payment();
+        config(['services.wave.webhook_signing_secret' => 'webhook-secret']);
+        $payload = ['id' => 'evt-wave-test', 'type' => 'test.test_event', 'data' => []];
+        $raw = json_encode($payload, JSON_THROW_ON_ERROR);
+        $timestamp = (string) now()->timestamp;
+        $signature = hash_hmac('sha256', $timestamp.$raw, 'webhook-secret');
+        $valid = app(WaveCheckoutService::class)->signatureIsValid($raw, "t={$timestamp},v1={$signature}");
+        Queue::fake();
+
+        $ingress = app(WebhookIngressService::class);
+        $event = $ingress->receive($account, $raw, ['Wave-Signature' => "t={$timestamp},v1={$signature}"], $valid);
+        $duplicate = $ingress->receive($account, $raw, ['Wave-Signature' => "t={$timestamp},v1={$signature}"], $valid);
+        $this->assertSame($event->id, $duplicate->id);
+        Queue::assertPushed(ProcessWebhookEvent::class, 2);
+
+        $job = new ProcessWebhookEvent($event->id);
+        $job->handle(app(PaymentService::class));
+        $job->handle(app(PaymentService::class));
+
+        $this->assertSame(WebhookEventStatus::PROCESSED, $event->refresh()->status);
+        $this->assertSame(PaymentStatus::CREATED, $payment->refresh()->status);
+        $this->assertSame(DonationStatus::PENDING, $payment->donation->refresh()->status);
+        $this->assertSame(0, AppliedFee::query()->count());
+        $this->assertPendingPaymentHasNoFinancialEffects($payment);
+    }
+
+    public function test_invalid_signature_test_event_is_ignored_without_business_effect(): void
+    {
+        [$payment, $account] = $this->payment();
+        config(['services.wave.webhook_signing_secret' => 'webhook-secret']);
+        $raw = json_encode(['id' => 'evt-wave-test-invalid', 'type' => 'test.test_event', 'data' => []], JSON_THROW_ON_ERROR);
+        $valid = app(WaveCheckoutService::class)->signatureIsValid($raw, 't='.now()->timestamp.',v1='.str_repeat('0', 64));
+
+        $event = app(WebhookIngressService::class)->receive($account, $raw, [], $valid);
+
+        $this->assertFalse($valid);
+        $this->assertSame(WebhookEventStatus::IGNORED, $event->status);
+        $this->assertSame(PaymentStatus::CREATED, $payment->refresh()->status);
+        $this->assertSame(0, AppliedFee::query()->count());
+        $this->assertPendingPaymentHasNoFinancialEffects($payment);
     }
 
     public function test_paid_is_irreversible_and_unknown_is_not_downgraded_by_an_open_checkout(): void

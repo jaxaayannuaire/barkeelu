@@ -47,6 +47,11 @@ class ProcessWebhookEvent implements ShouldQueue
                 $account = ProviderAccount::query()->findOrFail($event->provider_account_id);
                 $mapped = ($gateways ?? app(ProviderGatewayResolver::class))->for($account)->mapWebhook($payload, $account);
             }
+            if (($mapped['ignore'] ?? false) === true) {
+                $event->update(['status' => WebhookEventStatus::PROCESSED, 'processed_at' => now(), 'last_error' => null]);
+
+                return;
+            }
             $payment = $mapped['payment'] ?? Payment::query()->where('provider_account_id', $event->provider_account_id)->where('internal_reference', $payload['internal_reference'] ?? null)->firstOrFail();
             $payment = $paymentService->applyProviderState($payment, $mapped['event'] ?? [
                 'provider_account_id' => $event->provider_account_id,

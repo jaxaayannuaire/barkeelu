@@ -9,9 +9,24 @@ class WaveWebhookMapper
 {
     public function map(array $payload, int $providerAccountId): array
     {
+        if (($payload['type'] ?? null) === 'test.test_event') {
+            return ['ignore' => true];
+        }
+
         $data = $payload['data'] ?? null;
         if (! is_array($data) || ! is_string($payload['id'] ?? null) || ! is_string($payload['type'] ?? null)) {
             throw new DomainException('Webhook Wave incomplet.');
+        }
+        if ($payload['type'] === 'checkout.session.payment_failed') {
+            $payment = Payment::query()->where('provider_account_id', $providerAccountId)
+                ->where('provider_checkout_session_id', $data['id'] ?? null)->firstOrFail();
+
+            return ['payment' => $payment, 'event' => [
+                'provider_account_id' => $providerAccountId, 'internal_reference' => $payment->internal_reference,
+                'amount' => $payment->amount, 'currency' => $payment->currency, 'provider_status' => 'FAILED',
+                'provider_payment_id' => $data['transaction_id'] ?? null, 'provider_reference' => $payment->provider_client_reference,
+                'payload' => ['event_id' => $payload['id'], 'type' => $payload['type'], 'checkout_status' => $data['checkout_status'] ?? null, 'payment_status' => $data['payment_status'] ?? null],
+            ]];
         }
         $payment = Payment::query()->where('provider_account_id', $providerAccountId)
             ->where('provider_checkout_session_id', $data['id'] ?? null)
