@@ -12,7 +12,7 @@ class ProviderGatewayResolver
 
     public function for(ProviderAccount $account): PaymentProviderGateway
     {
-        if ($account->provider === 'WAVE') {
+        if (strtoupper($account->provider) === 'WAVE') {
             return $this->wave;
         }
 

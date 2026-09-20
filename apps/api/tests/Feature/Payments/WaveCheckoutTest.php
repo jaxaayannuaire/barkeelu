@@ -21,6 +21,7 @@ use App\Models\Payment;
 use App\Models\ProviderAccount;
 use App\Models\User;
 use App\Services\Payments\PaymentService;
+use App\Services\Payments\ProviderGatewayResolver;
 use App\Services\Payments\WaveCheckoutService;
 use App\Services\Payments\WaveGateway;
 use App\Services\Payments\WaveWebhookMapper;
@@ -299,6 +300,59 @@ class WaveCheckoutTest extends TestCase
         $this->assertPendingPaymentHasNoFinancialEffects($payment);
     }
 
+    public function test_webhook_route_resolves_lowercase_wave_to_single_active_uppercase_account(): void
+    {
+        [$payment, $account] = $this->payment();
+        Queue::fake();
+
+        $response = $this->waveWebhook('wave', ['id' => 'evt-wave-route-single', 'type' => 'test.test_event', 'data' => []]);
+
+        $response->assertAccepted();
+        $this->assertDatabaseHas('webhook_events', ['provider_account_id' => $account->id, 'provider_event_id' => 'evt-wave-route-single']);
+        $this->assertSame(PaymentStatus::CREATED, $payment->refresh()->status);
+    }
+
+    public function test_webhook_route_rejects_ambiguous_wave_accounts_without_business_effect(): void
+    {
+        [$payment] = $this->payment();
+        ProviderAccount::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'provider' => 'wave',
+            'name' => 'Second Wave account',
+            'environment' => 'TEST',
+            'currency' => 'XOF',
+            'is_active' => true,
+        ]);
+        Queue::fake();
+
+        $response = $this->waveWebhook('WAVE', ['id' => 'evt-wave-route-ambiguous', 'type' => 'test.test_event', 'data' => []]);
+
+        $response->assertNotFound();
+        $this->assertDatabaseCount('webhook_events', 0);
+        $this->assertSame(PaymentStatus::CREATED, $payment->refresh()->status);
+        $this->assertSame(0, AppliedFee::query()->count());
+        $this->assertPendingPaymentHasNoFinancialEffects($payment);
+    }
+
+    public function test_webhook_route_rejects_when_no_wave_account_is_active(): void
+    {
+        Queue::fake();
+
+        $response = $this->waveWebhook('WAVE', ['id' => 'evt-wave-route-missing', 'type' => 'test.test_event', 'data' => []]);
+
+        $response->assertNotFound();
+        $this->assertDatabaseCount('webhook_events', 0);
+    }
+
+    public function test_gateway_resolver_accepts_canonical_and_lowercase_wave_provider(): void
+    {
+        $resolver = app(ProviderGatewayResolver::class);
+
+        foreach (['WAVE', 'wave'] as $provider) {
+            $this->assertInstanceOf(WaveGateway::class, $resolver->for(new ProviderAccount(['provider' => $provider])));
+        }
+    }
+
     public function test_paid_is_irreversible_and_unknown_is_not_downgraded_by_an_open_checkout(): void
     {
         [$payment] = $this->payment();
@@ -375,5 +429,18 @@ class WaveCheckoutTest extends TestCase
     private function event(Payment $payment, string $status): array
     {
         return ['provider_account_id' => $payment->provider_account_id, 'internal_reference' => $payment->internal_reference, 'amount' => $payment->amount, 'currency' => $payment->currency, 'provider_status' => $status, 'provider_payment_id' => 'provider-'.$payment->id];
+    }
+
+    private function waveWebhook(string $provider, array $payload)
+    {
+        config(['services.wave.webhook_signing_secret' => 'webhook-secret']);
+        $raw = json_encode($payload, JSON_THROW_ON_ERROR);
+        $timestamp = (string) now()->timestamp;
+        $signature = hash_hmac('sha256', $timestamp.$raw, 'webhook-secret');
+
+        return $this->call('POST', '/api/v1/webhooks/'.$provider, [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_WAVE_SIGNATURE' => "t={$timestamp},v1={$signature}",
+        ], $raw);
     }
 }
