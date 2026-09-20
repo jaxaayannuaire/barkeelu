@@ -9,7 +9,7 @@
     <dl class="mt-6 space-y-3 rounded-2xl border border-border p-5 tabular-nums">
         <div class="flex justify-between"><dt>Montant du don</dt><dd>{{ number_format($donation->nominal_amount, 0, ',', ' ') }} FCFA</dd></div>
         @foreach (($checkout->fee_snapshot['fees'] ?? []) as $fee)
-            <div class="flex justify-between"><dt>{{ str_replace('_', ' ', $fee['fee_type']) }}</dt><dd>{{ number_format((int) $fee['calculated_amount'], 0, ',', ' ') }} FCFA</dd></div>
+            <div class="flex justify-between"><dt>{{ \App\Support\FeeLabel::for($fee['fee_type'] ?? null) }}</dt><dd>{{ number_format((int) $fee['calculated_amount'], 0, ',', ' ') }} FCFA</dd></div>
         @endforeach
         <div class="flex justify-between border-t border-border pt-3 font-semibold"><dt>Total payé</dt><dd>{{ number_format((int) $checkout->total_payable_amount, 0, ',', ' ') }} FCFA</dd></div>
     </dl>
