@@ -28,10 +28,12 @@
                         <div><dt class="text-muted">Contributions</dt><dd class="mt-1 font-semibold text-ink">{{ number_format($campaign->donation_count, 0, ',', ' ') }}</dd></div>
                         <div><dt class="text-muted">Soutiens distincts</dt><dd class="mt-1 font-semibold text-ink">{{ number_format($campaign->distinct_donor_count, 0, ',', ' ') }}</dd></div>
                     </dl>
-                    <p id="support-unavailable" class="mt-5 text-sm leading-6 text-muted">Parcours de don web à venir.</p>
+                    @if (! $supportUrl)
+                        <p id="support-unavailable" class="mt-5 text-sm leading-6 text-muted">{{ $fundraisingLabel }}.</p>
+                    @endif
                     <p id="follow-unavailable" class="sr-only">Fonctionnalité à venir.</p>
                     <p class="sr-only" data-share-status aria-live="polite"></p>
-                    <div class="mt-5"><x-campaign.action-bar :share-url="$canonical" /></div>
+                    <div class="mt-5"><x-campaign.action-bar :share-url="$canonical" :support-url="$supportUrl" /></div>
                 </aside>
             </div>
 
@@ -64,7 +66,7 @@
     <aside class="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-white p-3 shadow-lg lg:hidden" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))" aria-label="Actions de collecte">
         <div class="mx-auto max-w-[1200px]">
             <p class="mb-2 text-center text-xs tabular-nums text-muted">{{ number_format($campaign->net_collected_nominal, 0, ',', ' ') }} FCFA sur {{ number_format($campaign->goal_amount, 0, ',', ' ') }} FCFA</p>
-            <x-campaign.action-bar compact :share-url="$canonical" />
+            <x-campaign.action-bar compact :share-url="$canonical" :support-url="$supportUrl" />
         </div>
     </aside>
 @endsection

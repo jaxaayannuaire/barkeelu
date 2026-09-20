@@ -44,7 +44,8 @@ class CampaignShowTest extends TestCase
             ->assertSee('index,follow', false)
             ->assertSee('Vidéo de présentation non disponible')
             ->assertSee('Galerie non disponible')
-            ->assertSee('Parcours de don web à venir')
+            ->assertSee(route('donations.amount', ['slug' => $campaign->slug]), false)
+            ->assertDontSee('Parcours de don web à venir')
             ->assertSee('Fonctionnalité à venir')
             ->assertSee('data-share', false)
             ->assertDontSee('<script>', false)
@@ -52,6 +53,23 @@ class CampaignShowTest extends TestCase
             ->assertDontSee('prive@example.test')
             ->assertDontSee('Bénéficiaire privé')
             ->assertDontSee('Identité vérifiée');
+    }
+
+    public function test_paused_and_closed_public_campaigns_keep_a_factual_disabled_support_cta(): void
+    {
+        foreach ([CampaignFundraisingStatus::PAUSED, CampaignFundraisingStatus::CLOSED] as $fundraisingStatus) {
+            $campaign = $this->campaign(CampaignStatus::PUBLISHED, CampaignVisibility::PUBLIC, [
+                'fundraising_status' => $fundraisingStatus,
+            ]);
+
+            $this->get(route('campaigns.show', ['slug' => $campaign->slug]))
+                ->assertOk()
+                ->assertSee('Je soutiens')
+                ->assertSee('disabled', false)
+                ->assertSee($fundraisingStatus === CampaignFundraisingStatus::PAUSED
+                    ? 'Collecte temporairement suspendue.'
+                    : 'Collecte terminée.');
+        }
     }
 
     public function test_unlisted_campaign_is_viewable_by_direct_url_and_not_indexable(): void

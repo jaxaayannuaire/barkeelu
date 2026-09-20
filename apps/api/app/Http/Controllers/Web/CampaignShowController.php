@@ -40,6 +40,9 @@ class CampaignShowController extends Controller
                 ? 'Collecte portée par une organisation'
                 : 'Collecte individuelle',
             'fundraisingLabel' => $this->fundraisingLabel($campaign->fundraising_status),
+            'supportUrl' => $campaign->fundraising_status === CampaignFundraisingStatus::OPEN
+                ? route('donations.amount', ['slug' => $campaign->slug])
+                : null,
             'canonical' => route('campaigns.show', ['slug' => $campaign->slug]),
             'metaDescription' => Str::limit($description, 160),
             'robots' => $campaign->visibility === CampaignVisibility::PUBLIC ? 'index,follow' : 'noindex,nofollow',
