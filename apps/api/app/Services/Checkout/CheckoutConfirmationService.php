@@ -14,11 +14,6 @@ class CheckoutConfirmationService
 {
     public function __construct(private readonly DonationFactory $donations) {}
 
-    /**
-     * Flux 07A2 dédié au snapshot confirmé : DonationService legacy recalcule
-     * les politiques et matérialise des AppliedFee, donc reste inchangé dans
-     * le périmètre parallèle existant.
-     */
     public function confirm(CheckoutSession $session, array $input): CheckoutSession
     {
         return DB::transaction(function () use ($session, $input): CheckoutSession {
