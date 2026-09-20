@@ -20,6 +20,7 @@
     @else
         <p class="mt-5 text-muted" aria-live="polite">Le paiement est en cours de vérification par le serveur.</p>
     @endif
+    <a class="mt-6 inline-flex min-h-11 items-center rounded-[10px] border border-border px-4 font-semibold" href="{{ route('donations.waiting.checkout', [$checkout->campaign->slug, $checkout->public_id]) }}">Actualiser le statut</a>
     <p class="mt-5 text-sm tabular-nums text-muted">État : {{ $checkout->status->value }}</p>
 </section>
 @endsection

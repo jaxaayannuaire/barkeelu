@@ -11,6 +11,8 @@ use App\Enums\CampaignFundraisingStatus;
 use App\Enums\CampaignPayoutStatus;
 use App\Enums\CampaignStatus;
 use App\Enums\CampaignVisibility;
+use App\Enums\CheckoutStatus;
+use App\Enums\PaymentStatus;
 use App\Enums\ProviderInitiationStatus;
 use App\Models\AppliedFee;
 use App\Models\Beneficiary;
@@ -25,6 +27,7 @@ use Database\Seeders\FinancialFoundationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Mockery;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class PublicDonationFlowTest extends TestCase
@@ -260,6 +263,140 @@ class PublicDonationFlowTest extends TestCase
             ->assertRedirect(route('donations.thanks.checkout', [$campaign->slug, $checkout->public_id]));
         $this->assertSame('PAID', $checkout->refresh()->status->value);
         $this->assertSame(1, Donation::query()->count());
+    }
+
+    public function test_paid_thanks_displays_confirmed_snapshot_without_private_data(): void
+    {
+        [$campaign, $checkout] = $this->confirmedCheckout();
+        $payment = Payment::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'donation_id' => $checkout->donation_id,
+            'provider_account_id' => $this->providerAccount()->id,
+            'provider' => 'WAVE',
+            'internal_reference' => 'pay_private_reference',
+            'currency' => 'XOF',
+            'amount' => $checkout->total_payable_amount,
+            'status' => PaymentStatus::PAID,
+            'idempotency_key' => 'paid-terminal-'.$checkout->public_id,
+            'content_hash' => hash('sha256', 'paid-terminal'),
+            'paid_at' => now(),
+        ]);
+        $checkout->update(['status' => CheckoutStatus::PAID, 'last_payment_id' => $payment->id]);
+
+        $this->get(route('donations.thanks.checkout', [$campaign->slug, $checkout->public_id]))
+            ->assertOk()
+            ->assertSee('Paiement confirmé')
+            ->assertSee('10 000 FCFA')
+            ->assertSee('10 400 FCFA')
+            ->assertSee($payment->public_id)
+            ->assertDontSee('Awa Ndiaye')
+            ->assertDontSee('+221770000000')
+            ->assertDontSee('pay_private_reference')
+            ->assertDontSee('4 %')
+            ->assertDontSee('1 %');
+    }
+
+    #[DataProvider('terminalPaymentStates')]
+    public function test_terminal_payment_states_render_factual_failure_page(PaymentStatus $paymentStatus, string $message): void
+    {
+        [$campaign, $checkout] = $this->confirmedCheckout();
+        $payment = Payment::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'donation_id' => $checkout->donation_id,
+            'provider_account_id' => $this->providerAccount()->id,
+            'provider' => 'WAVE',
+            'internal_reference' => 'pay_terminal_reference',
+            'currency' => 'XOF',
+            'amount' => $checkout->total_payable_amount,
+            'status' => $paymentStatus,
+            'idempotency_key' => 'terminal-'.$paymentStatus->value.'-'.$checkout->public_id,
+            'content_hash' => hash('sha256', $paymentStatus->value),
+        ]);
+        $checkout->update(['status' => CheckoutStatus::FAILED, 'last_payment_id' => $payment->id]);
+
+        $response = $this->get(route('donations.failed.checkout', [$campaign->slug, $checkout->public_id]));
+
+        $response->assertOk()
+            ->assertSee($message)
+            ->assertDontSee('Awa Ndiaye')
+            ->assertDontSee('+221770000000')
+            ->assertDontSee('pay_terminal_reference');
+        $paymentStatus === PaymentStatus::FAILED
+            ? $response->assertSee('Réessayer le paiement')
+            : $response->assertDontSee('Réessayer le paiement');
+        if ($paymentStatus !== PaymentStatus::FAILED) {
+            $this->post(route('donations.retry.checkout', [$campaign->slug, $checkout->public_id]))->assertStatus(409);
+        }
+    }
+
+    public static function terminalPaymentStates(): array
+    {
+        return [
+            'failed' => [PaymentStatus::FAILED, 'Le serveur a confirmé l’échec de cette tentative.'],
+            'expired' => [PaymentStatus::EXPIRED, 'Cette session de paiement a expiré.'],
+            'cancelled' => [PaymentStatus::CANCELLED, 'Cette session de paiement a été annulée.'],
+        ];
+    }
+
+    public function test_expired_checkout_without_payment_renders_expired_terminal_page(): void
+    {
+        $campaign = $this->campaign();
+        $this->post(route('donations.amount', $campaign->slug), ['nominal_amount' => 10000]);
+        $checkout = CheckoutSession::query()->firstOrFail();
+        $checkout->update(['status' => CheckoutStatus::EXPIRED]);
+
+        $this->get(route('donations.failed.checkout', [$campaign->slug, $checkout->public_id]))
+            ->assertOk()
+            ->assertSee('Cette session de paiement a expiré.')
+            ->assertDontSee('Réessayer le paiement');
+    }
+
+    public function test_cancelled_checkout_without_payment_renders_cancelled_terminal_page(): void
+    {
+        $campaign = $this->campaign();
+        $this->post(route('donations.amount', $campaign->slug), ['nominal_amount' => 10000]);
+        $checkout = CheckoutSession::query()->firstOrFail();
+        $checkout->update(['status' => CheckoutStatus::CANCELLED]);
+
+        $this->get(route('donations.failed.checkout', [$campaign->slug, $checkout->public_id]))
+            ->assertOk()
+            ->assertSee('Cette session de paiement a été annulée.')
+            ->assertDontSee('Réessayer le paiement');
+    }
+
+    public function test_waiting_pages_keep_unknown_and_pending_actions_safe_without_javascript(): void
+    {
+        [$campaign, $checkout] = $this->confirmedCheckout();
+        $payment = Payment::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'donation_id' => $checkout->donation_id,
+            'provider_account_id' => $this->providerAccount()->id,
+            'provider' => 'WAVE',
+            'internal_reference' => 'pay_waiting_reference',
+            'currency' => 'XOF',
+            'amount' => $checkout->total_payable_amount,
+            'status' => PaymentStatus::UNKNOWN,
+            'idempotency_key' => 'waiting-unknown-'.$checkout->public_id,
+            'content_hash' => hash('sha256', 'waiting-unknown'),
+        ]);
+        $checkout->update(['status' => CheckoutStatus::UNKNOWN, 'last_payment_id' => $payment->id]);
+
+        $this->get(route('donations.waiting.checkout', [$campaign->slug, $checkout->public_id]))
+            ->assertOk()
+            ->assertSee('Vérifier le statut')
+            ->assertSee(route('donations.waiting.checkout', [$campaign->slug, $checkout->public_id]), false)
+            ->assertDontSee('Réessayer le paiement')
+            ->assertDontSee('+221770000000')
+            ->assertDontSee('pay_waiting_reference');
+
+        $payment->update(['status' => PaymentStatus::PENDING]);
+        $checkout->update(['status' => CheckoutStatus::PAYMENT_PENDING]);
+
+        $this->get(route('donations.waiting.checkout', [$campaign->slug, $checkout->public_id]))
+            ->assertOk()
+            ->assertSee('Actualiser le statut')
+            ->assertSee(route('donations.waiting.checkout', [$campaign->slug, $checkout->public_id]), false)
+            ->assertDontSee('Vérifier le statut');
     }
 
     public function test_multiple_active_wave_accounts_are_not_selected_arbitrarily(): void

@@ -201,14 +201,22 @@ class DonationFlowController extends Controller
         $session = $this->checkoutSession($slug, $checkout);
         abort_unless($session->status === CheckoutStatus::PAID, 404);
 
-        return view('pages.donations.thanks', ['checkout' => $session, 'donation' => $session->donation]);
+        return view('pages.donations.thanks', [
+            'checkout' => $session,
+            'donation' => $session->donation,
+            'payment' => $session->lastPayment()->first(),
+        ]);
     }
 
     public function failedCheckout(string $slug, string $checkout): View
     {
         $session = $this->checkoutSession($slug, $checkout);
-        $payment = $session->lastPayment()->firstOrFail();
-        abort_unless($payment->status === PaymentStatus::FAILED, 404);
+        $payment = $session->lastPayment()->first();
+        abort_unless(
+            in_array($session->status, [CheckoutStatus::EXPIRED, CheckoutStatus::CANCELLED], true)
+            || $payment !== null && in_array($payment->status, [PaymentStatus::FAILED, PaymentStatus::EXPIRED, PaymentStatus::CANCELLED], true),
+            404,
+        );
 
         return view('pages.donations.failed', ['checkout' => $session, 'payment' => $payment]);
     }
