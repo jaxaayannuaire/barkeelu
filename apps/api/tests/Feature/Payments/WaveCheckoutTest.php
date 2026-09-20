@@ -15,7 +15,6 @@ use App\Models\Campaign;
 use App\Models\Payment;
 use App\Models\ProviderAccount;
 use App\Models\User;
-use App\Services\Donations\DonationService;
 use App\Services\Payments\PaymentService;
 use App\Services\Payments\WaveCheckoutService;
 use App\Services\Payments\WaveWebhookMapper;
@@ -28,10 +27,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use Tests\Support\CreatesConfirmedDonations;
 use Tests\TestCase;
 
 class WaveCheckoutTest extends TestCase
 {
+    use CreatesConfirmedDonations;
     use RefreshDatabase;
 
     public function test_checkout_post_and_get_are_signed_and_restrict_the_selected_payer_mobile(): void
@@ -161,8 +162,12 @@ class WaveCheckoutTest extends TestCase
         $beneficiary = Beneficiary::query()->create(['public_id' => (string) Str::uuid(), 'type' => BeneficiaryType::INDIVIDUAL, 'display_name' => 'B', 'status' => BeneficiaryStatus::ACTIVE, 'created_by_user_id' => $user->id]);
         $campaign = Campaign::query()->create(['public_id' => (string) Str::uuid(), 'owner_user_id' => $user->id, 'created_by_user_id' => $user->id, 'beneficiary_id' => $beneficiary->id, 'title' => 'C', 'slug' => 'wave-'.Str::lower(Str::random(8)), 'description' => 'D', 'goal_amount' => 1_000, 'currency' => 'XOF', 'status' => CampaignStatus::PUBLISHED, 'fundraising_status' => CampaignFundraisingStatus::OPEN, 'payout_status' => CampaignPayoutStatus::NOT_ELIGIBLE, 'visibility' => CampaignVisibility::PUBLIC]);
         $account = ProviderAccount::query()->create(['public_id' => (string) Str::uuid(), 'provider' => 'WAVE', 'name' => 'Wave test', 'environment' => 'TEST', 'currency' => 'XOF', 'is_active' => true]);
-        $donation = app(DonationService::class)->create($campaign, null, ['nominal_amount' => 100, 'currency' => 'XOF', 'idempotency_key' => 'wave-donation-'.Str::uuid()]);
+        $donation = $this->createPendingConfirmedDonation($campaign, null, 'wave-donation-'.Str::uuid(), [
+            'payoutProvisionAmount' => 1,
+            'totalPayableAmount' => 105,
+        ]);
         $payment = app(PaymentService::class)->create($donation, $account, ['amount' => 105, 'currency' => 'XOF', 'idempotency_key' => 'wave-payment-'.Str::uuid()]);
+        $this->assertPendingPaymentHasNoFinancialEffects($payment);
 
         return [$donation, $account, $payment];
     }

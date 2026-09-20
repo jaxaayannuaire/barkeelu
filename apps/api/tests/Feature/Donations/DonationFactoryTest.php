@@ -35,6 +35,9 @@ class DonationFactoryTest extends TestCase
         $this->assertSame(10_500, $donation->total_payable_amount);
         $this->assertSame('Awa', $donation->donor_name);
         $this->assertSame(1, Donation::query()->count());
+        $this->assertDatabaseCount('applied_fees', 0);
+        $this->assertDatabaseCount('ledger_transactions', 0);
+        $this->assertDatabaseCount('ledger_entries', 0);
     }
 
     public function test_same_idempotency_key_and_content_returns_existing_donation(): void

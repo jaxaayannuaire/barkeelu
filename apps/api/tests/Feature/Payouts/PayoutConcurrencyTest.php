@@ -12,17 +12,18 @@ use App\Models\Beneficiary;
 use App\Models\Campaign;
 use App\Models\ProviderAccount;
 use App\Models\User;
-use App\Services\Donations\DonationService;
 use App\Services\Payments\PaymentService;
 use Database\Seeders\FinancialFoundationSeeder;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
+use Tests\Support\CreatesConfirmedDonations;
 use Tests\TestCase;
 
 class PayoutConcurrencyTest extends TestCase
 {
+    use CreatesConfirmedDonations;
     use DatabaseMigrations;
 
     public function test_two_real_postgresql_processes_cannot_over_reserve_a_campaign(): void
@@ -63,8 +64,13 @@ class PayoutConcurrencyTest extends TestCase
         $beneficiary = Beneficiary::query()->create(['public_id' => (string) Str::uuid(), 'type' => BeneficiaryType::INDIVIDUAL, 'display_name' => 'B', 'status' => BeneficiaryStatus::ACTIVE, 'created_by_user_id' => $operator->id]);
         $campaign = Campaign::query()->create(['public_id' => (string) Str::uuid(), 'owner_user_id' => $operator->id, 'created_by_user_id' => $operator->id, 'beneficiary_id' => $beneficiary->id, 'title' => 'C', 'slug' => 'c-'.Str::lower(Str::random(8)), 'description' => 'D', 'goal_amount' => 20_000, 'currency' => 'XOF', 'status' => CampaignStatus::PUBLISHED, 'fundraising_status' => CampaignFundraisingStatus::OPEN, 'payout_status' => CampaignPayoutStatus::NOT_ELIGIBLE, 'visibility' => CampaignVisibility::PUBLIC]);
         $account = ProviderAccount::query()->create(['public_id' => (string) Str::uuid(), 'provider' => 'TEST', 'name' => 'Test', 'environment' => 'TEST', 'currency' => 'XOF', 'is_active' => true]);
-        $donation = app(DonationService::class)->create($campaign, $operator, ['nominal_amount' => 10_000, 'currency' => 'XOF', 'idempotency_key' => 'donation-'.Str::uuid()]);
+        $donation = $this->createPendingConfirmedDonation($campaign, $operator, 'donation-'.Str::uuid(), [
+            'nominalAmount' => 10_000,
+            'platformFeeAmount' => 400,
+            'totalPayableAmount' => 10_400,
+        ]);
         $payment = app(PaymentService::class)->create($donation, $account, ['amount' => 10_400, 'currency' => 'XOF', 'idempotency_key' => 'payment-'.Str::uuid()]);
+        $this->assertPendingPaymentHasNoFinancialEffects($payment);
         app(PaymentService::class)->applyProviderState($payment, ['provider_account_id' => $account->id, 'internal_reference' => $payment->internal_reference, 'amount' => 10_400, 'currency' => 'XOF', 'provider_status' => 'PAID', 'provider_payment_id' => 'provider-payment']);
 
         return [$campaign, $account, $operator, $approver];

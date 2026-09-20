@@ -14,17 +14,18 @@ use App\Models\Campaign;
 use App\Models\LedgerAccount;
 use App\Models\ProviderAccount;
 use App\Models\User;
-use App\Services\Donations\DonationService;
 use App\Services\Payments\PaymentService;
 use App\Services\Refunds\RefundService;
 use Database\Seeders\FinancialFoundationSeeder;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Tests\Support\CreatesConfirmedDonations;
 use Tests\TestCase;
 
 class RefundServiceTest extends TestCase
 {
+    use CreatesConfirmedDonations;
     use RefreshDatabase;
 
     public function test_partial_multiple_refunds_are_reserved_and_executed_without_over_refund(): void
@@ -77,8 +78,9 @@ class RefundServiceTest extends TestCase
         $beneficiary = Beneficiary::query()->create(['public_id' => (string) Str::uuid(), 'type' => BeneficiaryType::INDIVIDUAL, 'display_name' => 'B', 'status' => BeneficiaryStatus::ACTIVE, 'created_by_user_id' => $user->id]);
         $campaign = Campaign::query()->create(['public_id' => (string) Str::uuid(), 'owner_user_id' => $user->id, 'created_by_user_id' => $user->id, 'beneficiary_id' => $beneficiary->id, 'title' => 'C', 'slug' => 'c-'.Str::lower(Str::random(8)), 'description' => 'D', 'goal_amount' => 1000, 'currency' => 'XOF', 'status' => CampaignStatus::PUBLISHED, 'fundraising_status' => CampaignFundraisingStatus::OPEN, 'payout_status' => CampaignPayoutStatus::NOT_ELIGIBLE, 'visibility' => CampaignVisibility::PUBLIC]);
         $account = ProviderAccount::query()->create(['public_id' => (string) Str::uuid(), 'provider' => 'TEST', 'name' => 'Test', 'environment' => 'TEST', 'currency' => 'XOF', 'is_active' => true]);
-        $donation = app(DonationService::class)->create($campaign, $user, ['nominal_amount' => 100, 'currency' => 'XOF', 'idempotency_key' => 'donation-'.Str::uuid()]);
+        $donation = $this->createPendingConfirmedDonation($campaign, $user, 'donation-'.Str::uuid());
         $payment = app(PaymentService::class)->create($donation, $account, ['amount' => 104, 'currency' => 'XOF', 'idempotency_key' => 'payment-'.Str::uuid()]);
+        $this->assertPendingPaymentHasNoFinancialEffects($payment);
         app(PaymentService::class)->applyProviderState($payment, ['provider_account_id' => $account->id, 'internal_reference' => $payment->internal_reference, 'amount' => 104, 'currency' => 'XOF', 'provider_status' => 'PAID', 'provider_payment_id' => 'provider-'.$payment->id]);
 
         return [$payment->refresh(), $user];

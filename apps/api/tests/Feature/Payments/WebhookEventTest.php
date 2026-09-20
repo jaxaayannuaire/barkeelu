@@ -15,17 +15,18 @@ use App\Models\Beneficiary;
 use App\Models\Campaign;
 use App\Models\ProviderAccount;
 use App\Models\User;
-use App\Services\Donations\DonationService;
 use App\Services\Payments\PaymentService;
 use App\Services\Webhooks\WebhookIngressService;
 use Database\Seeders\FinancialFoundationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use Tests\Support\CreatesConfirmedDonations;
 use Tests\TestCase;
 
 class WebhookEventTest extends TestCase
 {
+    use CreatesConfirmedDonations;
     use RefreshDatabase;
 
     public function test_valid_raw_webhook_is_persisted_deduplicated_and_processed_once(): void
@@ -67,9 +68,11 @@ class WebhookEventTest extends TestCase
         $beneficiary = Beneficiary::query()->create(['public_id' => (string) Str::uuid(), 'type' => BeneficiaryType::INDIVIDUAL, 'display_name' => 'Beneficiary', 'status' => BeneficiaryStatus::ACTIVE, 'created_by_user_id' => $user->id]);
         $campaign = Campaign::query()->create(['public_id' => (string) Str::uuid(), 'owner_user_id' => $user->id, 'created_by_user_id' => $user->id, 'beneficiary_id' => $beneficiary->id, 'title' => 'Campaign', 'slug' => 'campaign-'.Str::lower(Str::random(8)), 'description' => 'Description', 'goal_amount' => 100000, 'currency' => 'XOF', 'status' => CampaignStatus::PUBLISHED, 'fundraising_status' => CampaignFundraisingStatus::OPEN, 'payout_status' => CampaignPayoutStatus::NOT_ELIGIBLE, 'visibility' => CampaignVisibility::PUBLIC]);
         $account = ProviderAccount::query()->create(['public_id' => (string) Str::uuid(), 'provider' => 'TEST_PROVIDER', 'name' => 'Test', 'environment' => 'TEST', 'currency' => 'XOF', 'is_active' => true]);
-        $donation = app(DonationService::class)->create($campaign, $user, ['nominal_amount' => 100, 'currency' => 'XOF', 'idempotency_key' => 'donation-'.Str::uuid()]);
+        $donation = $this->createPendingConfirmedDonation($campaign, $user, 'donation-'.Str::uuid());
+        $payment = app(PaymentService::class)->create($donation, $account, ['amount' => 104, 'currency' => 'XOF', 'idempotency_key' => 'payment-'.Str::uuid()]);
+        $this->assertPendingPaymentHasNoFinancialEffects($payment);
 
-        return [app(PaymentService::class)->create($donation, $account, ['amount' => 104, 'currency' => 'XOF', 'idempotency_key' => 'payment-'.Str::uuid()]), $account];
+        return [$payment, $account];
     }
 
     private function payload($payment, string $status, ?string $eventId = null): array

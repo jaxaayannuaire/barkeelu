@@ -13,16 +13,17 @@ use App\Models\Campaign;
 use App\Models\Payment;
 use App\Models\ProviderAccount;
 use App\Models\User;
-use App\Services\Donations\DonationService;
 use App\Services\Payments\PaymentService;
 use Database\Seeders\FinancialFoundationSeeder;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Tests\Support\CreatesConfirmedDonations;
 use Tests\TestCase;
 
 class RefundConcurrencyTest extends TestCase
 {
+    use CreatesConfirmedDonations;
     use DatabaseMigrations;
 
     public function test_two_processes_cannot_over_reserve(): void
@@ -32,8 +33,13 @@ class RefundConcurrencyTest extends TestCase
         $b = Beneficiary::create(['public_id' => (string) Str::uuid(), 'type' => BeneficiaryType::INDIVIDUAL, 'display_name' => 'B', 'status' => BeneficiaryStatus::ACTIVE, 'created_by_user_id' => $u->id]);
         $c = Campaign::create(['public_id' => (string) Str::uuid(), 'owner_user_id' => $u->id, 'created_by_user_id' => $u->id, 'beneficiary_id' => $b->id, 'title' => 'C', 'slug' => 'c-'.Str::random(8), 'description' => 'D', 'goal_amount' => 20000, 'currency' => 'XOF', 'status' => CampaignStatus::PUBLISHED, 'fundraising_status' => CampaignFundraisingStatus::OPEN, 'payout_status' => CampaignPayoutStatus::NOT_ELIGIBLE, 'visibility' => CampaignVisibility::PUBLIC]);
         $a = ProviderAccount::create(['public_id' => (string) Str::uuid(), 'provider' => 'TEST', 'name' => 'T', 'environment' => 'TEST', 'currency' => 'XOF', 'is_active' => true]);
-        $d = app(DonationService::class)->create($c, $u, ['nominal_amount' => 10000, 'currency' => 'XOF', 'idempotency_key' => 'd-'.Str::uuid()]);
+        $d = $this->createPendingConfirmedDonation($c, $u, 'd-'.Str::uuid(), [
+            'nominalAmount' => 10_000,
+            'platformFeeAmount' => 400,
+            'totalPayableAmount' => 10_400,
+        ]);
         $p = app(PaymentService::class)->create($d, $a, ['amount' => 10400, 'currency' => 'XOF', 'idempotency_key' => 'p-'.Str::uuid()]);
+        $this->assertPendingPaymentHasNoFinancialEffects($p);
         app(PaymentService::class)->applyProviderState($p, ['provider_account_id' => $a->id, 'internal_reference' => $p->internal_reference, 'amount' => 10400, 'currency' => 'XOF', 'provider_status' => 'PAID', 'provider_payment_id' => 'x']);
         $workers = [$this->worker($p, $u, 'r-a'), $this->worker($p, $u, 'r-b')];
         $results = array_map(fn ($w) => $this->finish($w), $workers);

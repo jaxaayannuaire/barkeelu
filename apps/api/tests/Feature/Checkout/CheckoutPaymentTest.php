@@ -151,7 +151,7 @@ class CheckoutPaymentTest extends TestCase
         ]);
         app(CheckoutPaymentService::class)->syncFromPayment($result->payment->refresh());
 
-        $this->assertSame(2, AppliedFee::query()->count());
+        $this->assertSame(1, AppliedFee::query()->count());
         $this->assertSame(CheckoutStatus::PAID, $session->refresh()->status);
     }
 
