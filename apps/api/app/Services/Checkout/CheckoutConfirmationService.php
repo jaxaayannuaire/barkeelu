@@ -2,17 +2,18 @@
 
 namespace App\Services\Checkout;
 
+use App\Data\Donations\ConfirmedDonationData;
 use App\Enums\CheckoutStatus;
-use App\Enums\DonationStatus;
 use App\Enums\FeeType;
 use App\Models\CheckoutSession;
-use App\Models\Donation;
+use App\Services\Donations\DonationFactory;
 use DomainException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class CheckoutConfirmationService
 {
+    public function __construct(private readonly DonationFactory $donations) {}
+
     /**
      * Flux 07A2 dédié au snapshot confirmé : DonationService legacy recalcule
      * les politiques et matérialise des AppliedFee, donc reste inchangé dans
@@ -44,33 +45,21 @@ class CheckoutConfirmationService
             $confirmationHash = $this->confirmationContentHash($locked);
 
             $donationKey = 'checkout-confirmation:'.$locked->public_id;
-            $donation = Donation::query()->where('idempotency_key', $donationKey)->lockForUpdate()->first();
-            if ($donation === null) {
-                $fees = collect($locked->fee_snapshot['fees']);
-                $platformFee = (int) $fees->where('fee_type', FeeType::PLATFORM_FEE->value)->sum('calculated_amount');
-                $payoutProvision = (int) $fees->where('fee_type', FeeType::PAYOUT_PROVISION->value)->sum('calculated_amount');
-                $donor = $locked->donor_snapshot;
-
-                $donation = Donation::query()->create([
-                    'public_id' => (string) Str::uuid(),
-                    'campaign_id' => $locked->campaign_id,
-                    'donor_user_id' => $locked->donor_user_id,
-                    'donor_name' => $donor['name'],
-                    'donor_email' => $donor['email'],
-                    'is_anonymous' => $donor['is_anonymous'],
-                    'currency' => $locked->currency,
-                    'nominal_amount' => $locked->nominal_amount,
-                    'platform_fee_amount' => $platformFee,
-                    'payout_provision_amount' => $payoutProvision,
-                    'total_payable_amount' => $locked->total_payable_amount,
-                    'status' => DonationStatus::PENDING,
-                    'idempotency_key' => $donationKey,
-                    'content_hash' => $confirmationHash,
-                    'created_by_user_id' => $locked->donor_user_id,
-                ]);
-            } elseif (! hash_equals($donation->content_hash, $confirmationHash)) {
-                throw new DomainException('Conflit de confirmation checkout.');
-            }
+            $fees = collect($locked->fee_snapshot['fees']);
+            $donation = $this->donations->create(new ConfirmedDonationData(
+                campaignId: $locked->campaign_id,
+                donorUserId: $locked->donor_user_id,
+                donorSnapshot: $locked->donor_snapshot,
+                nominalAmount: $locked->nominal_amount,
+                platformFeeAmount: (int) $fees->where('fee_type', FeeType::PLATFORM_FEE->value)->sum('calculated_amount'),
+                payoutProvisionAmount: (int) $fees->where('fee_type', FeeType::PAYOUT_PROVISION->value)->sum('calculated_amount'),
+                totalPayableAmount: $locked->total_payable_amount,
+                currency: $locked->currency,
+                idempotencyKey: $donationKey,
+                contentHash: $confirmationHash,
+                createdByUserId: $locked->donor_user_id,
+                sourceContext: 'checkout_confirmation',
+            ));
 
             $locked->update([
                 'donation_id' => $donation->id,
