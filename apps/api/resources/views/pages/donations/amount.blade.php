@@ -16,7 +16,7 @@
         <label class="block font-semibold" for="nominal_amount">Montant du don</label>
         <input class="mt-2 min-h-11 w-full rounded-[10px] border border-border px-3 tabular-nums" id="nominal_amount" name="nominal_amount" inputmode="numeric" value="{{ old('nominal_amount', $checkout?->nominal_amount ?? '') }}" required>
         @error('nominal_amount')<p class="text-danger">{{ $message }}</p>@enderror
-        <p class="rounded-2xl bg-brand-primary-soft p-4 text-sm text-muted">Le montant est enregistré dans un parcours sécurisé. Les frais seront présentés après génération de la quote serveur.</p>
+        <p class="rounded-2xl bg-brand-primary-soft p-4 text-sm text-muted">Les frais applicables seront calculés par le serveur avant confirmation.</p>
         <button class="min-h-11 w-full rounded-[10px] bg-brand-primary px-4 font-semibold text-white">Continuer</button>
     </form>
 </section>

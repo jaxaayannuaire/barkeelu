@@ -9,7 +9,12 @@
     <dl class="mt-7 space-y-3 rounded-2xl border border-border p-5 tabular-nums">
         <div class="flex justify-between"><dt>Montant du don</dt><dd>{{ number_format($checkout->nominal_amount, 0, ',', ' ') }} FCFA</dd></div>
         @foreach (($checkout->fee_snapshot['fees'] ?? []) as $fee)
-            <div class="flex justify-between"><dt>{{ str_replace('_', ' ', $fee['fee_type']) }}</dt><dd>{{ number_format((int) $fee['calculated_amount'], 0, ',', ' ') }} FCFA</dd></div>
+            @php($feeLabel = match ($fee['fee_type'] ?? null) {
+                'PLATFORM_FEE' => 'Frais de plateforme',
+                'PAYOUT_PROVISION' => 'Provision de transfert',
+                default => 'Frais applicables',
+            })
+            <div class="flex justify-between"><dt>{{ $feeLabel }}</dt><dd>{{ number_format((int) $fee['calculated_amount'], 0, ',', ' ') }} FCFA</dd></div>
         @endforeach
         <div class="flex justify-between border-t border-border pt-3 font-semibold"><dt>Total à payer</dt><dd>{{ number_format((int) $checkout->total_payable_amount, 0, ',', ' ') }} FCFA</dd></div>
         <div class="flex justify-between border-t border-border pt-3"><dt>État du parcours</dt><dd>{{ $checkout->status->value }}</dd></div>

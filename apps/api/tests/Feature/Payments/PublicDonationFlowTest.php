@@ -38,7 +38,12 @@ class PublicDonationFlowTest extends TestCase
     {
         $campaign = $this->campaign();
 
-        $this->get(route('donations.amount', $campaign->slug))->assertOk()->assertSee('Votre don');
+        $this->get(route('donations.amount', $campaign->slug))
+            ->assertOk()
+            ->assertSee('Votre don')
+            ->assertSee('Les frais applicables seront calculés par le serveur avant confirmation.')
+            ->assertDontSee('4 %')
+            ->assertDontSee('1 %');
 
         $first = $this->post(route('donations.amount', $campaign->slug), ['nominal_amount' => 10000]);
         $checkout = CheckoutSession::query()->firstOrFail();
@@ -125,6 +130,13 @@ class PublicDonationFlowTest extends TestCase
         $this->get(route('donations.checkout', [$campaign->slug, $checkout->public_id]))
             ->assertOk()
             ->assertSee('QUOTED')
+            ->assertSee('Frais de plateforme')
+            ->assertSee('400 FCFA')
+            ->assertDontSee('Provision de transfert')
+            ->assertDontSee('PLATFORM FEE')
+            ->assertDontSee('PAYOUT PROVISION')
+            ->assertDontSee('4 %')
+            ->assertDontSee('1 %')
             ->assertSee('Total à payer')
             ->assertSee((string) number_format($quoted->total_payable_amount, 0, ',', ' '))
             ->assertDontSee('awa@example.test')
