@@ -35,7 +35,9 @@ Les webhooks bruts sont persistés, dédupliqués et traités par queue. Un
 `checkout.session.payment_failed` minimal est corrélé strictement par
 `provider_account_id` et session checkout, puis passe Payment et Checkout à `FAILED` sans
 effet Finance. Un `test.test_event` signé est persisté, dédupliqué et
-`PROCESSED` sans effet métier. Une signature invalide n'a aucun effet.
+`PROCESSED` sans effet métier. Une signature invalide est persistée `IGNORED`,
+sans job, puis rejetée HTTP `401`. Un healthcheck Wave signé devient
+`PROCESSED` sans job métier, Payment, Donation, `AppliedFee` ni ledger.
 
 Le provider canonique est `WAVE`; les frontières acceptent la casse. Un webhook
 requiert exactement un compte Wave actif. Zéro ou plusieurs comptes actifs sont
@@ -52,16 +54,18 @@ un résultat unique doit valider référence, montant et devise avant mémorisat
 de session et mapping. Aucune recherche par téléphone ou montant seul. `PAID`
 reste irréversible; frais et ledger passent uniquement par `PaymentService`.
 
-Validation locale automatisée seulement. Wave Checkout ne fournit pas de
-sandbox; aucun test Wave Business Portal, aucune micro-transaction réelle et
-aucune activation production n'ont eu lieu. Secrets runtime restent hors Git.
+Le Webhook Tester Wave Business Portal a validé l'endpoint
+`https://test.barkeelu.com/api/v1/webhooks/WAVE` : serveur joignable, SSL
+valide, signatures valides acceptées et signatures invalides rejetées HTTP
+`401`. Aucun nouvel échec de queue n'a été observé après correctif. Secrets
+runtime restent hors Git.
 
 ## Statut
 
 Parcours Donation / Checkout SSR et domaines Finance MVP sont implémentés et
-testés localement. Activation d'encaissement réelle reste interdite avant
-Webhook Tester Wave Business Portal, micro-transaction contrôlée, validation
-des secrets et revue opérationnelle.
+testés. Le Webhook Tester Wave Business Portal est validé. La prochaine étape
+est une micro-transaction Wave contrôlée. Production Wave reste interdite tant
+que 09C3 n'est pas validé.
 
 ## Stack cible
 

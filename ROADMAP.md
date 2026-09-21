@@ -24,7 +24,8 @@
 | Refund / Payout / Reconciliation MVP | Réalisé |
 | Parcours SSR terminal et transparence frais | Réalisé |
 | Wave locale durcie 09C1 | Réalisé |
-| Wave Business Portal / micro-transaction réelle | Planifié |
+| Webhook Tester Wave Business Portal 09C2 | Réalisé |
+| Micro-transaction Wave réelle contrôlée 09C3 | Planifié |
 | Barkeelu Live data-only | Planifié |
 | Flutter | Planifié |
 | Production | Non autorisée |
@@ -49,15 +50,16 @@ Terminé : initiations ambiguës, webhooks stricts, compte `WAVE`, throttle
 
 ### 09C2 — Webhook Tester Wave Business Portal
 
-- configurer secrets runtime hors Git ;
-- valider signature, persistance, déduplication, ordre et compte Wave réel ;
-- recalibrer `webhook-wave` à partir des observations E2E.
+Terminé : endpoint `https://test.barkeelu.com/api/v1/webhooks/WAVE` joignable
+en SSL, signatures valides acceptées, signatures invalides rejetées HTTP `401`,
+healthcheck `PROCESSED` sans job métier et `test.test_event` `PROCESSED` sans
+finance. Warning Wave historique non bloquant.
 
 ### 09C3 — Micro-transaction réelle contrôlée
 
 - exécuter une micro-transaction autorisée et traçable ;
 - vérifier `PAID`, `FAILED`, `UNKNOWN`, montant, devise, session, `AppliedFee` et ledger ;
-- décider production readiness seulement après 09C3.
+- garder Wave production non autorisée jusqu'à validation 09C3.
 
 ## Phases suivantes
 

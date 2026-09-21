@@ -1,5 +1,25 @@
 # Barkeelu — CHANGELOG
 
+## 2026-09-21 — Phase 09C2 Wave Business Portal
+
+### Validé
+
+- Webhook Tester Wave Business Portal validé sur `https://test.barkeelu.com/api/v1/webhooks/WAVE` ;
+- serveur joignable, SSL valide et requêtes Wave signées acceptées ;
+- signature invalide persistée `IGNORED`, sans traitement ni job métier, puis rejetée HTTP `401` ;
+- healthcheck signé `PROCESSED` sans job métier, Payment, Donation, `AppliedFee` ni ledger ;
+- `test.test_event` signé `PROCESSED` sans effet financier ;
+- aucun nouvel échec de queue après correctif.
+
+### Validation
+
+- suite complète : 199 tests, 1395 assertions, exit 0 ;
+- warning Wave « taux d'erreur récent élevé » lié aux anciennes tentatives ; non bloquant pour 09C2.
+
+### Limite
+
+- 09C3, micro-transaction Wave réelle contrôlée, reste requis ; Wave production reste non autorisée.
+
 ## 2026-09-20 — Phase 09C1 Wave locale durcie
 
 ### Ajouté
