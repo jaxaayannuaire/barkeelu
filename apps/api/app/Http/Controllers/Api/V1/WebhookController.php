@@ -31,6 +31,10 @@ class WebhookController extends Controller
         $valid = $gateways->for($account)->verifyWebhook($request->getContent(), $request->headers->all());
         $event = $service->receive($account, $request->getContent(), $request->headers->all(), $valid);
 
+        if (! $valid) {
+            return response()->json(['status' => 'rejected'], 401);
+        }
+
         return response()->json(['status' => 'accepted', 'event_id' => $event->public_id], 202);
     }
 }

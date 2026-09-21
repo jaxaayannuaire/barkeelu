@@ -15,12 +15,21 @@ class WebhookIngressService
     public function receive(ProviderAccount $account, string $rawPayload, array $headers, bool $signatureValid): WebhookEvent
     {
         $payload = json_decode($rawPayload, true, 512, JSON_THROW_ON_ERROR);
+        $technicalHealthcheck = $signatureValid
+            && strtoupper($account->provider) === 'WAVE'
+            && strtolower((string) ($payload['type'] ?? $payload['event_type'] ?? '')) === 'healthcheck';
+        $initialStatus = WebhookEventStatus::IGNORED;
+        if ($signatureValid) {
+            $initialStatus = $technicalHealthcheck ? WebhookEventStatus::PROCESSED : WebhookEventStatus::VERIFIED;
+        }
+        $receivedAt = now();
+        $processedAt = $technicalHealthcheck ? $receivedAt : null;
         // Wave identifie l'événement par « id », les intégrations historiques par « event_id ».
         $eventId = $payload['event_id'] ?? $payload['id'] ?? null;
         $payloadHash = hash('sha256', $rawPayload);
         $dedupeKey = hash('sha256', implode('|', [$account->id, $eventId ?? $payloadHash, $payloadHash, $signatureValid ? 'valid' : 'invalid']));
 
-        $event = DB::transaction(function () use ($account, $rawPayload, $headers, $signatureValid, $payload, $eventId, $payloadHash, $dedupeKey): WebhookEvent {
+        $event = DB::transaction(function () use ($account, $rawPayload, $headers, $signatureValid, $initialStatus, $receivedAt, $processedAt, $payload, $eventId, $payloadHash, $dedupeKey): WebhookEvent {
             $existing = WebhookEvent::query()->where('dedupe_key', $dedupeKey)->lockForUpdate()->first();
 
             if ($existing !== null) {
@@ -50,8 +59,9 @@ class WebhookIngressService
                 'raw_payload' => $rawPayload,
                 'payload_hash' => $payloadHash,
                 'dedupe_key' => $dedupeKey,
-                'status' => $signatureValid ? WebhookEventStatus::VERIFIED : WebhookEventStatus::IGNORED,
-                'received_at' => now(),
+                'status' => $initialStatus,
+                'received_at' => $receivedAt,
+                'processed_at' => $processedAt,
             ]);
         });
 

@@ -20,6 +20,7 @@ use App\Models\Campaign;
 use App\Models\Payment;
 use App\Models\ProviderAccount;
 use App\Models\User;
+use App\Models\WebhookEvent;
 use App\Services\Payments\PaymentService;
 use App\Services\Payments\ProviderGatewayResolver;
 use App\Services\Payments\WaveCheckoutService;
@@ -394,6 +395,8 @@ class WaveCheckoutTest extends TestCase
         $this->assertSame(WebhookEventStatus::PROCESSED, $event->refresh()->status);
         $this->assertSame(PaymentStatus::CREATED, $payment->refresh()->status);
         $this->assertSame(DonationStatus::PENDING, $payment->donation->refresh()->status);
+        $this->assertDatabaseCount('payments', 1);
+        $this->assertDatabaseCount('donations', 1);
         $this->assertSame(0, AppliedFee::query()->count());
         $this->assertPendingPaymentHasNoFinancialEffects($payment);
     }
@@ -412,6 +415,52 @@ class WaveCheckoutTest extends TestCase
         $this->assertSame(PaymentStatus::CREATED, $payment->refresh()->status);
         $this->assertSame(0, AppliedFee::query()->count());
         $this->assertPendingPaymentHasNoFinancialEffects($payment);
+    }
+
+    public function test_webhook_route_rejects_invalid_signature_after_recording_ignored_event_without_dispatching_a_job(): void
+    {
+        [$payment, $account] = $this->payment();
+        Queue::fake();
+
+        $response = $this->waveWebhook('WAVE', ['id' => 'evt-wave-route-invalid', 'type' => 'test.test_event', 'data' => []], str_repeat('0', 64));
+
+        $response->assertUnauthorized();
+        $this->assertDatabaseHas('webhook_events', [
+            'provider_account_id' => $account->id,
+            'provider_event_id' => 'evt-wave-route-invalid',
+            'signature_valid' => false,
+            'status' => WebhookEventStatus::IGNORED->value,
+        ]);
+        Queue::assertNothingPushed();
+        $this->assertSame(PaymentStatus::CREATED, $payment->refresh()->status);
+        $this->assertSame(DonationStatus::PENDING, $payment->donation->refresh()->status);
+        $this->assertDatabaseCount('payments', 1);
+        $this->assertDatabaseCount('donations', 1);
+        $this->assertSame(0, AppliedFee::query()->count());
+        $this->assertDatabaseCount('ledger_transactions', 0);
+        $this->assertDatabaseCount('failed_jobs', 0);
+    }
+
+    public function test_valid_wave_healthcheck_is_processed_without_job_or_financial_effect(): void
+    {
+        [$payment, $account] = $this->payment();
+        Queue::fake();
+
+        $response = $this->waveWebhook('WAVE', ['type' => 'healthcheck']);
+
+        $response->assertAccepted();
+        $event = WebhookEvent::query()->sole();
+        $this->assertSame($account->id, $event->provider_account_id);
+        $this->assertSame(WebhookEventStatus::PROCESSED, $event->status);
+        $this->assertNotNull($event->processed_at);
+        Queue::assertNothingPushed();
+        $this->assertSame(PaymentStatus::CREATED, $payment->refresh()->status);
+        $this->assertSame(DonationStatus::PENDING, $payment->donation->refresh()->status);
+        $this->assertDatabaseCount('payments', 1);
+        $this->assertDatabaseCount('donations', 1);
+        $this->assertSame(0, AppliedFee::query()->count());
+        $this->assertDatabaseCount('ledger_transactions', 0);
+        $this->assertDatabaseCount('failed_jobs', 0);
     }
 
     public function test_webhook_route_resolves_lowercase_wave_to_single_active_uppercase_account(): void
@@ -591,12 +640,12 @@ class WaveCheckoutTest extends TestCase
         return ['provider_account_id' => $payment->provider_account_id, 'internal_reference' => $payment->internal_reference, 'amount' => $payment->amount, 'currency' => $payment->currency, 'provider_status' => $status, 'provider_payment_id' => 'provider-'.$payment->id];
     }
 
-    private function waveWebhook(string $provider, array $payload)
+    private function waveWebhook(string $provider, array $payload, ?string $signature = null)
     {
         config(['services.wave.webhook_signing_secret' => 'webhook-secret']);
         $raw = json_encode($payload, JSON_THROW_ON_ERROR);
         $timestamp = (string) now()->timestamp;
-        $signature = hash_hmac('sha256', $timestamp.$raw, 'webhook-secret');
+        $signature ??= hash_hmac('sha256', $timestamp.$raw, 'webhook-secret');
 
         return $this->call('POST', '/api/v1/webhooks/'.$provider, [], [], [], [
             'CONTENT_TYPE' => 'application/json',
