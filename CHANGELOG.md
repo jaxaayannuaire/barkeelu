@@ -1,5 +1,31 @@
 # Barkeelu — CHANGELOG
 
+## 2026-09-22 — Phase 09C3 Wave réelle contrôlée
+
+### Validé
+
+- micro-transaction Wave réelle : 100 XOF nominal + 4 XOF de frais plateforme + 1 XOF de provision payout Wave = 105 XOF payés ;
+- Payment, Donation et Checkout `PAID` ; WebhookEvent `PROCESSED` ; ledger `POSTED` ; deux `AppliedFee` matérialisés ;
+- journalisation structurée et expurgée des rejets Wave, incluant les détails de validation explicitement autorisés ;
+- proxy egress Wave optionnel via `WAVE_HTTP_PROXY`, limité aux appels HTTP sortants Wave ;
+- URL HTTPS derrière Cloudflare Tunnel via proxy trusted ;
+- `success_url` et `error_url` Wave identiques, vers retour public cross-device `/retour`, `noindex,nofollow`, `no-store` et read-only ;
+- webhook signé, retrieve serveur ou réconciliation comme seules autorités de paiement ;
+- migrations PostgreSQL correctives R6/R7 pour `prevent_posted_mutation()` et `validate_posted_ledger()` sur bases déjà migrées ;
+- synchronisation obligatoire après succès : Payment, Donation, ledger, `AppliedFee`, Checkout.
+
+### Exploitation
+
+- déployer les migrations Laravel normalement ; ne jamais désactiver les triggers ledger ;
+- exécuter un worker queue ; exiger un webhook signé ;
+- ne jamais exposer ou journaliser `WAVE_HTTP_PROXY` avec credentials éventuels ;
+- ne jamais utiliser retour navigateur comme autorité de paiement.
+
+### Validation
+
+- suite complète : 221 tests, 1547 assertions, exit 0 ;
+- `git diff --check` : OK.
+
 ## 2026-09-21 — Phase 09C2 Wave Business Portal
 
 ### Validé

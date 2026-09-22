@@ -60,12 +60,48 @@ valide, signatures valides acceptées et signatures invalides rejetées HTTP
 `401`. Aucun nouvel échec de queue n'a été observé après correctif. Secrets
 runtime restent hors Git.
 
+### Wave 09C3 validé
+
+L'initiation Wave journalise les rejets fournisseur sous forme structurée et
+expurgée : statut HTTP, provider, opération, référence Payment, montant,
+devise et champs d'erreur explicitement autorisés. Aucun secret, header
+d'authentification, signature, téléphone complet ni corps brut n'est journalisé.
+
+`WAVE_HTTP_PROXY` est optionnel. Lorsqu'il est renseigné, seules les requêtes
+HTTP sortantes Wave passent par ce proxy. Il ne doit jamais être exposé
+publiquement ni journalisé avec d'éventuels credentials. Sans cette variable,
+le client Wave utilise sa sortie réseau habituelle.
+
+Les URL Wave `success_url` et `error_url` sont identiques et ciblent le retour
+public `GET /collectes/{slug}/don/paiement/{checkout}/retour`. Cette page SSR
+est cross-device, `noindex,nofollow`, `no-store` et strictement read-only. Elle
+ne confirme jamais un paiement et n'expose aucune donnée donateur ou fournisseur.
+Le webhook signé, le retrieve serveur ou la réconciliation restent les seules
+autorités de paiement. Derrière Cloudflare Tunnel, Laravel fait confiance aux
+en-têtes `X-Forwarded-*` du proxy configuré afin de générer des URL HTTPS.
+
+Les migrations correctives PostgreSQL R6 et R7 sont requises sur les bases déjà
+migrées : `prevent_posted_mutation()` et `validate_posted_ledger()` doivent être
+mises à jour par migrations Laravel normales au déploiement. Les triggers restent
+actifs : transaction `POSTED` immuable, ledger équilibré, au moins deux écritures
+et devise cohérente.
+
+Après un paiement confirmé, le traitement serveur synchronise obligatoirement
+Payment, Donation, ledger, `AppliedFee`, puis Checkout. Un worker queue est requis
+pour traiter les webhooks signés.
+
+La micro-transaction réelle contrôlée a validé : 100 XOF nominal, 4 XOF de frais
+plateforme, 1 XOF de provision payout Wave, soit 105 XOF payés. Payment, Donation
+et Checkout sont `PAID`; WebhookEvent est `PROCESSED`; ledger est `POSTED`; deux
+`AppliedFee` sont matérialisés. Suite complète : 221 tests, 1547 assertions,
+exit 0.
+
 ## Statut
 
 Parcours Donation / Checkout SSR et domaines Finance MVP sont implémentés et
-testés. Le Webhook Tester Wave Business Portal est validé. La prochaine étape
-est une micro-transaction Wave contrôlée. Production Wave reste interdite tant
-que 09C3 n'est pas validé.
+testés. Webhook Tester Wave Business Portal et micro-transaction Wave contrôlée
+09C3 sont validés. L'activation production reste une décision de déploiement et
+d'exploitation distincte.
 
 ## Stack cible
 

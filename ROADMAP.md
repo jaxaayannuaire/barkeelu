@@ -25,7 +25,7 @@
 | Parcours SSR terminal et transparence frais | Réalisé |
 | Wave locale durcie 09C1 | Réalisé |
 | Webhook Tester Wave Business Portal 09C2 | Réalisé |
-| Micro-transaction Wave réelle contrôlée 09C3 | Planifié |
+| Micro-transaction Wave réelle contrôlée 09C3 | Réalisé |
 | Barkeelu Live data-only | Planifié |
 | Flutter | Planifié |
 | Production | Non autorisée |
@@ -57,9 +57,17 @@ finance. Warning Wave historique non bloquant.
 
 ### 09C3 — Micro-transaction réelle contrôlée
 
-- exécuter une micro-transaction autorisée et traçable ;
-- vérifier `PAID`, `FAILED`, `UNKNOWN`, montant, devise, session, `AppliedFee` et ledger ;
-- garder Wave production non autorisée jusqu'à validation 09C3.
+Terminé et validé : micro-transaction Wave contrôlée, webhook signé, retrieve
+serveur, proxy egress optionnel, HTTPS Cloudflare trusted proxy, retour
+cross-device read-only, migrations PostgreSQL R6/R7 et synchronisation Checkout.
+
+Résultat réel : 100 + 4 + 1 = 105 XOF, Payment/Donation/Checkout `PAID`,
+WebhookEvent `PROCESSED`, ledger `POSTED`, deux `AppliedFee`. Suite complète :
+221 tests, 1547 assertions, exit 0.
+
+L'activation production reste une décision de déploiement et d'exploitation
+séparée. Elle exige migrations appliquées, worker queue, webhook signé et proxy
+Wave privé si configuré.
 
 ## Phases suivantes
 
