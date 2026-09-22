@@ -40,6 +40,7 @@ return [
         'api_key' => env('WAVE_API_KEY'),
         'request_signing_secret' => env('WAVE_REQUEST_SIGNING_SECRET'),
         'webhook_signing_secret' => env('WAVE_WEBHOOK_SIGNING_SECRET'),
+        'proxy' => env('WAVE_HTTP_PROXY'),
     ],
 
 ];

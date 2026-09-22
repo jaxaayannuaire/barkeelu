@@ -25,6 +25,7 @@ use App\Models\User;
 use App\Services\Payments\ProviderGatewayResolver;
 use Database\Seeders\FinancialFoundationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Mockery;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -220,6 +221,135 @@ class PublicDonationFlowTest extends TestCase
         $this->get(route('donations.status.checkout', [$campaign->slug, $checkout->public_id]))
             ->assertOk()
             ->assertJson(['checkout_status' => 'PAYMENT_PENDING', 'payment_status' => 'PENDING']);
+    }
+
+    public function test_proxied_checkout_generates_https_provider_return_urls_for_wave(): void
+    {
+        [$campaign, $checkout] = $this->confirmedCheckout();
+        $this->providerAccount();
+        $urls = [];
+        $gateway = Mockery::mock(PaymentProviderGateway::class);
+        $gateway->shouldReceive('initiate')->once()->withArgs(function ($payment, array $context) use (&$urls): bool {
+            $urls = ['success_url' => $context['success_url'], 'error_url' => $context['error_url']];
+
+            return true;
+        })->andReturn(new ProviderInitiationResult(
+            ProviderInitiationStatus::SENT_CONFIRMED,
+            'wave-proxied-session',
+            'wave-proxied-reference',
+            'https://pay.test/wave-proxied',
+        ));
+        $resolver = Mockery::mock(ProviderGatewayResolver::class);
+        $resolver->shouldReceive('for')->once()->andReturn($gateway);
+        $this->app->instance(ProviderGatewayResolver::class, $resolver);
+
+        $this->withServerVariables([
+            'HTTP_X_FORWARDED_PROTO' => 'https',
+            'REMOTE_ADDR' => '127.0.0.1',
+        ])->post("http://test.barkeelu.com/collectes/{$campaign->slug}/don/paiement/{$checkout->public_id}/payer")
+            ->assertRedirect('https://pay.test/wave-proxied');
+
+        $return = "https://test.barkeelu.com/collectes/{$campaign->slug}/don/paiement/{$checkout->public_id}/retour";
+        $this->assertSame($return, $urls['success_url']);
+        $this->assertSame($return, $urls['error_url']);
+    }
+
+    public function test_direct_https_checkout_keeps_https_provider_return_urls_without_proxy_headers(): void
+    {
+        [$campaign, $checkout] = $this->confirmedCheckout();
+        $this->providerAccount();
+        $urls = [];
+        $gateway = Mockery::mock(PaymentProviderGateway::class);
+        $gateway->shouldReceive('initiate')->once()->withArgs(function ($payment, array $context) use (&$urls): bool {
+            $urls = ['success_url' => $context['success_url'], 'error_url' => $context['error_url']];
+
+            return true;
+        })->andReturn(new ProviderInitiationResult(
+            ProviderInitiationStatus::SENT_CONFIRMED,
+            'wave-direct-session',
+            'wave-direct-reference',
+            'https://pay.test/wave-direct',
+        ));
+        $resolver = Mockery::mock(ProviderGatewayResolver::class);
+        $resolver->shouldReceive('for')->once()->andReturn($gateway);
+        $this->app->instance(ProviderGatewayResolver::class, $resolver);
+
+        $this->withServerVariables([
+            'HTTPS' => 'on',
+            'REMOTE_ADDR' => '198.51.100.10',
+        ])->post("https://test.barkeelu.com/collectes/{$campaign->slug}/don/paiement/{$checkout->public_id}/payer")
+            ->assertRedirect('https://pay.test/wave-direct');
+
+        $return = "https://test.barkeelu.com/collectes/{$campaign->slug}/don/paiement/{$checkout->public_id}/retour";
+        $this->assertSame($return, $urls['success_url']);
+        $this->assertSame($return, $urls['error_url']);
+    }
+
+    public function test_provider_return_is_public_read_only_and_pending_stays_pending(): void
+    {
+        [$campaign, $checkout] = $this->confirmedCheckout();
+        $payment = $this->paymentForCheckout($checkout, PaymentStatus::PENDING);
+        $checkout->update(['status' => CheckoutStatus::PAYMENT_PENDING, 'last_payment_id' => $payment->id]);
+        $before = [
+            'checkout' => DB::table('checkout_sessions')->where('id', $checkout->id)->first(),
+            'payment' => DB::table('payments')->where('id', $payment->id)->first(),
+            'donation' => DB::table('donations')->where('id', $checkout->donation_id)->first(),
+            'ledger_transactions' => DB::table('ledger_transactions')->count(),
+            'ledger_entries' => DB::table('ledger_entries')->count(),
+            'applied_fees' => AppliedFee::query()->count(),
+        ];
+
+        $response = $this->call('GET', route('donations.provider-return.checkout', [$campaign->slug, $checkout->public_id]), [], [], [], ['HTTP_COOKIE' => '']);
+
+        $response->assertOk()
+            ->assertSee('Paiement en cours de confirmation')
+            ->assertSee('Retour à la collecte')
+            ->assertDontSee('Awa Ndiaye')
+            ->assertDontSee('+221770000000')
+            ->assertDontSee($payment->internal_reference)
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow');
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+        $response->assertSee('<meta name="robots" content="noindex,nofollow">', false);
+        $this->assertEquals($before['checkout'], DB::table('checkout_sessions')->where('id', $checkout->id)->first());
+        $this->assertEquals($before['payment'], DB::table('payments')->where('id', $payment->id)->first());
+        $this->assertEquals($before['donation'], DB::table('donations')->where('id', $checkout->donation_id)->first());
+        $this->assertSame($before['ledger_transactions'], DB::table('ledger_transactions')->count());
+        $this->assertSame($before['ledger_entries'], DB::table('ledger_entries')->count());
+        $this->assertSame($before['applied_fees'], AppliedFee::query()->count());
+        $this->assertSame(PaymentStatus::PENDING, $payment->refresh()->status);
+        $this->assertSame(CheckoutStatus::PAYMENT_PENDING, $checkout->refresh()->status);
+    }
+
+    public function test_provider_return_rejects_unknown_checkout_or_campaign_mismatch(): void
+    {
+        [$campaign, $checkout] = $this->confirmedCheckout();
+        $otherCampaign = $this->campaign();
+
+        $this->call('GET', route('donations.provider-return.checkout', [$otherCampaign->slug, $checkout->public_id]), [], [], [], ['HTTP_COOKIE' => ''])->assertNotFound();
+        $this->call('GET', route('donations.provider-return.checkout', [$campaign->slug, (string) Str::uuid()]), [], [], [], ['HTTP_COOKIE' => ''])->assertNotFound();
+        $campaign->update(['visibility' => CampaignVisibility::PRIVATE]);
+        $this->call('GET', route('donations.provider-return.checkout', [$campaign->slug, $checkout->public_id]), [], [], [], ['HTTP_COOKIE' => ''])->assertNotFound();
+    }
+
+    public function test_provider_return_renders_only_public_state_messages(): void
+    {
+        [$campaign, $checkout] = $this->confirmedCheckout();
+
+        $checkout->update(['status' => CheckoutStatus::PAID]);
+        $this->call('GET', route('donations.provider-return.checkout', [$campaign->slug, $checkout->public_id]), [], [], [], ['HTTP_COOKIE' => ''])
+            ->assertOk()
+            ->assertSee('Paiement confirmé');
+
+        $checkout->update(['status' => CheckoutStatus::UNKNOWN]);
+        $this->call('GET', route('donations.provider-return.checkout', [$campaign->slug, $checkout->public_id]), [], [], [], ['HTTP_COOKIE' => ''])
+            ->assertOk()
+            ->assertSee('Confirmation du paiement en cours')
+            ->assertDontSee('Paiement non confirmé');
+
+        $checkout->update(['status' => CheckoutStatus::FAILED]);
+        $this->call('GET', route('donations.provider-return.checkout', [$campaign->slug, $checkout->public_id]), [], [], [], ['HTTP_COOKIE' => ''])
+            ->assertOk()
+            ->assertSee('Paiement non confirmé');
     }
 
     public function test_unknown_payment_cannot_be_retried_and_status_is_private_minimal(): void
@@ -537,6 +667,22 @@ class PublicDonationFlowTest extends TestCase
         return ProviderAccount::query()->create([
             'public_id' => (string) Str::uuid(), 'provider' => 'WAVE', 'name' => 'Wave SSR',
             'environment' => 'TEST', 'currency' => 'XOF', 'is_active' => true,
+        ]);
+    }
+
+    private function paymentForCheckout(CheckoutSession $checkout, PaymentStatus $status): Payment
+    {
+        return Payment::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'donation_id' => $checkout->donation_id,
+            'provider_account_id' => $this->providerAccount()->id,
+            'provider' => 'WAVE',
+            'internal_reference' => 'pay-provider-return-'.$checkout->public_id,
+            'currency' => $checkout->currency,
+            'amount' => $checkout->total_payable_amount,
+            'status' => $status,
+            'idempotency_key' => 'provider-return-'.$checkout->public_id,
+            'content_hash' => hash('sha256', 'provider-return-'.$checkout->public_id),
         ]);
     }
 

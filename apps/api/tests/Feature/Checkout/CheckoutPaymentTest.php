@@ -198,7 +198,7 @@ class CheckoutPaymentTest extends TestCase
         $valid = app(WaveCheckoutService::class)->signatureIsValid($raw, "t={$timestamp},v1={$signature}");
         $event = app(WebhookIngressService::class)->receive($account, $raw, [], $valid);
 
-        (new ProcessWebhookEvent($event->id))->handle(app(PaymentService::class), app(CheckoutPaymentService::class));
+        app()->call([new ProcessWebhookEvent($event->id), 'handle']);
 
         $this->assertSame(WebhookEventStatus::PROCESSED, $event->refresh()->status);
         $this->assertSame(CheckoutStatus::CONFIRMED, $session->refresh()->status);

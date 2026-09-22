@@ -22,7 +22,7 @@ class ProcessWebhookEvent implements ShouldQueue
 
     public function __construct(public int $webhookEventId) {}
 
-    public function handle(PaymentService $paymentService, ?CheckoutPaymentService $checkoutPayments = null, ?ProviderGatewayResolver $gateways = null): void
+    public function handle(PaymentService $paymentService, CheckoutPaymentService $checkoutPayments, ProviderGatewayResolver $gateways): void
     {
         $event = DB::transaction(function (): ?WebhookEvent {
             $event = WebhookEvent::query()->lockForUpdate()->findOrFail($this->webhookEventId);
@@ -45,7 +45,7 @@ class ProcessWebhookEvent implements ShouldQueue
             $mapped = null;
             if ($event->provider === 'WAVE') {
                 $account = ProviderAccount::query()->findOrFail($event->provider_account_id);
-                $mapped = ($gateways ?? app(ProviderGatewayResolver::class))->for($account)->mapWebhook($payload, $account);
+                $mapped = $gateways->for($account)->mapWebhook($payload, $account);
             }
             if (($mapped['ignore'] ?? false) === true) {
                 $event->update(['status' => WebhookEventStatus::PROCESSED, 'processed_at' => now(), 'last_error' => null]);
@@ -63,7 +63,7 @@ class ProcessWebhookEvent implements ShouldQueue
                 'provider_reference' => $payload['provider_reference'] ?? null,
                 'payload' => $payload,
             ]);
-            $checkoutPayments?->syncFromPayment($payment);
+            $checkoutPayments->syncFromPayment($payment);
 
             $event->update(['status' => WebhookEventStatus::PROCESSED, 'processed_at' => now(), 'last_error' => null]);
         } catch (\Throwable $exception) {

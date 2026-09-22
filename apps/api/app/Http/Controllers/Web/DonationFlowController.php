@@ -17,6 +17,7 @@ use App\Services\Checkout\CheckoutSessionService;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 class DonationFlowController extends Controller
@@ -113,13 +114,13 @@ class DonationFlowController extends Controller
             abort(409, $exception->getMessage());
         }
         $paymentKey = 'ssr-payment-'.$session->public_id.'-'.($session->donation?->payments()->count() + 1);
-        $waiting = route('donations.waiting.checkout', [$slug, $session->public_id]);
+        $providerReturn = route('donations.provider-return.checkout', [$slug, $session->public_id]);
 
         try {
             $result = $checkoutPayments->initiate($session, $account, [
                 'idempotency_key' => $paymentKey,
-                'success_url' => $waiting,
-                'error_url' => $waiting,
+                'success_url' => $providerReturn,
+                'error_url' => $providerReturn,
             ]);
         } catch (DomainException $exception) {
             abort(409, $exception->getMessage());
@@ -134,6 +135,51 @@ class DonationFlowController extends Controller
         $payment = $session->lastPayment()->firstOrFail();
 
         return view('pages.donations.waiting', ['checkout' => $session, 'payment' => $payment]);
+    }
+
+    public function providerReturnCheckout(string $slug, string $checkout): Response
+    {
+        $campaign = Campaign::query()
+            ->publiclyViewable()
+            ->where('slug', $slug)
+            ->firstOrFail();
+        $session = CheckoutSession::query()
+            ->where('public_id', $checkout)
+            ->where('campaign_id', $campaign->id)
+            ->firstOrFail();
+
+        $state = match ($session->status) {
+            CheckoutStatus::PAID => [
+                'name' => 'paid',
+                'title' => 'Paiement confirmé',
+                'message' => 'Votre paiement a été confirmé par le serveur.',
+            ],
+            CheckoutStatus::PAYMENT_PENDING => [
+                'name' => 'pending',
+                'title' => 'Paiement en cours de confirmation',
+                'message' => 'La confirmation peut prendre quelques instants.',
+            ],
+            CheckoutStatus::UNKNOWN => [
+                'name' => 'unknown',
+                'title' => 'Confirmation du paiement en cours',
+                'message' => 'Le serveur vérifie encore le statut du paiement.',
+            ],
+            CheckoutStatus::FAILED => [
+                'name' => 'failed',
+                'title' => 'Paiement non confirmé',
+                'message' => 'Le paiement n’a pas pu être confirmé.',
+            ],
+            default => [
+                'name' => 'pending',
+                'title' => 'Confirmation du paiement en cours',
+                'message' => 'Le statut du paiement est en cours de vérification.',
+            ],
+        };
+
+        return response()
+            ->view('pages.donations.provider-return', ['campaign' => $campaign, 'state' => $state])
+            ->header('Cache-Control', 'no-store, private, no-cache, max-age=0')
+            ->header('X-Robots-Tag', 'noindex, nofollow');
     }
 
     public function statusCheckout(string $slug, string $checkout)
@@ -162,13 +208,13 @@ class DonationFlowController extends Controller
             abort(409, $exception->getMessage());
         }
         $paymentKey = 'ssr-payment-'.$session->public_id.'-'.($session->donation?->payments()->count() + 1);
-        $waiting = route('donations.waiting.checkout', [$slug, $session->public_id]);
+        $providerReturn = route('donations.provider-return.checkout', [$slug, $session->public_id]);
 
         try {
             $result = $checkoutPayments->initiate($session, $account, [
                 'idempotency_key' => $paymentKey,
-                'success_url' => $waiting,
-                'error_url' => $waiting,
+                'success_url' => $providerReturn,
+                'error_url' => $providerReturn,
             ]);
         } catch (DomainException $exception) {
             abort(409, $exception->getMessage());

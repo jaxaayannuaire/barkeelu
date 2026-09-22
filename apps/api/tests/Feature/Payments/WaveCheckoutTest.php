@@ -34,6 +34,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Tests\Support\CreatesConfirmedDonations;
@@ -84,6 +85,88 @@ class WaveCheckoutTest extends TestCase
                 && isset($matches[1], $matches[2])
                 && hash_equals(hash_hmac('sha256', $matches[1], 'request-secret'), $matches[2]);
         });
+    }
+
+    public function test_wave_initiate_keeps_historical_client_options_without_proxy(): void
+    {
+        [$payment] = $this->payment();
+        $this->configureWave();
+        config(['services.wave.proxy' => null]);
+        $optionsSeen = [];
+        Http::fake(function (ClientRequest $request, array $options) use (&$optionsSeen) {
+            $optionsSeen = $options;
+
+            return Http::response(['id' => 'session-no-proxy', 'wave_launch_url' => 'https://pay.wave.test/session-no-proxy', 'when_expires' => now()->addMinutes(15)->toIso8601String()]);
+        });
+
+        $result = app(WaveGateway::class)->initiate($payment, [
+            'payer_mobile' => '+221771234567',
+            'success_url' => 'https://barkeelu.test/success',
+            'error_url' => 'https://barkeelu.test/error',
+        ]);
+
+        $this->assertSame(ProviderInitiationStatus::SENT_CONFIRMED, $result->status);
+        $this->assertArrayNotHasKey('proxy', $optionsSeen);
+    }
+
+    public function test_wave_initiate_uses_configured_proxy(): void
+    {
+        [$payment] = $this->payment();
+        $this->configureWave();
+        config(['services.wave.proxy' => 'http://127.0.0.1:3128']);
+        $optionsSeen = [];
+        Http::fake(function (ClientRequest $request, array $options) use (&$optionsSeen) {
+            $optionsSeen = $options;
+
+            return Http::response(['id' => 'session-proxy', 'wave_launch_url' => 'https://pay.wave.test/session-proxy', 'when_expires' => now()->addMinutes(15)->toIso8601String()]);
+        });
+
+        $result = app(WaveGateway::class)->initiate($payment, [
+            'payer_mobile' => '+221771234567',
+            'success_url' => 'https://barkeelu.test/success',
+            'error_url' => 'https://barkeelu.test/error',
+        ]);
+
+        $this->assertSame(ProviderInitiationStatus::SENT_CONFIRMED, $result->status);
+        $this->assertSame('http://127.0.0.1:3128', $optionsSeen['proxy']);
+    }
+
+    public function test_wave_retrieve_uses_configured_proxy(): void
+    {
+        [$payment] = $this->payment();
+        $payment->update(['provider_checkout_session_id' => 'session-proxy', 'provider_client_reference' => $payment->internal_reference]);
+        $this->configureWave();
+        config(['services.wave.proxy' => 'http://127.0.0.1:3128']);
+        $optionsSeen = [];
+        Http::fake(function (ClientRequest $request, array $options) use (&$optionsSeen, $payment) {
+            $optionsSeen = $options;
+
+            return Http::response($this->checkoutPayload($payment, 'session-proxy'));
+        });
+
+        $result = app(WaveGateway::class)->retrieve($payment->refresh());
+
+        $this->assertSame('PAID', $result->status);
+        $this->assertSame('http://127.0.0.1:3128', $optionsSeen['proxy']);
+    }
+
+    public function test_wave_search_by_client_reference_uses_configured_proxy(): void
+    {
+        [$payment] = $this->payment();
+        $payment->update(['status' => PaymentStatus::UNKNOWN, 'provider_checkout_session_id' => null, 'provider_client_reference' => $payment->internal_reference]);
+        $this->configureWave();
+        config(['services.wave.proxy' => 'http://127.0.0.1:3128']);
+        $optionsSeen = [];
+        Http::fake(function (ClientRequest $request, array $options) use (&$optionsSeen, $payment) {
+            $optionsSeen = $options;
+
+            return Http::response(['result' => [$this->checkoutPayload($payment, 'session-search-proxy')]]);
+        });
+
+        $result = app(WaveGateway::class)->retrieve($payment->refresh());
+
+        $this->assertSame('PAID', $result->status);
+        $this->assertSame('http://127.0.0.1:3128', $optionsSeen['proxy']);
     }
 
     public function test_unknown_with_checkout_session_id_uses_direct_get(): void
@@ -291,6 +374,121 @@ class WaveCheckoutTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_422_is_not_sent_and_logs_only_sanitized_wave_error_context(): void
+    {
+        [$payment] = $this->payment();
+        config([
+            'services.wave.api_key' => 'wave-api-key-secret',
+            'services.wave.request_signing_secret' => 'request-signing-secret',
+            'services.wave.webhook_signing_secret' => 'webhook-signing-secret',
+            'services.wave.base_url' => 'https://api.wave.test',
+        ]);
+        Log::spy();
+        Http::fake(['https://api.wave.test/v1/checkout/sessions' => Http::response([
+            'code' => 'invalid_amount',
+            'message' => 'Minimum amount is 100 XOF.',
+            'authorization' => 'Bearer provider-token',
+            'signature' => 'provider-signature',
+            'payer_mobile' => '+221771234567',
+        ], 422)]);
+
+        $result = app(WaveGateway::class)->initiate($payment, [
+            'payer_mobile' => '+221771234567',
+            'success_url' => 'https://barkeelu.test/success',
+            'error_url' => 'https://barkeelu.test/error',
+        ]);
+
+        $this->assertSame(ProviderInitiationStatus::NOT_SENT, $result->status);
+        Log::shouldHaveReceived('warning')->once()->withArgs(function (string $message, array $context) use ($payment): bool {
+            $this->assertSame('Wave checkout initiation rejected.', $message);
+            $this->assertSame('WAVE', $context['provider']);
+            $this->assertSame('checkout_initiate', $context['operation']);
+            $this->assertSame(422, $context['http_status']);
+            $this->assertSame($payment->public_id, $context['payment_public_id']);
+            $this->assertSame(105, $context['amount']);
+            $this->assertSame('XOF', $context['currency']);
+            $this->assertSame(['code' => 'invalid_amount', 'message' => 'Minimum amount is 100 XOF.'], $context['provider_error']);
+            $serialized = json_encode($context, JSON_THROW_ON_ERROR);
+            foreach (['wave-api-key-secret', 'request-signing-secret', 'webhook-signing-secret', 'provider-token', 'provider-signature', '+221771234567'] as $secret) {
+                $this->assertStringNotContainsString($secret, $serialized);
+            }
+
+            return true;
+        });
+    }
+
+    public function test_400_validation_error_logs_only_bounded_sanitized_details(): void
+    {
+        [$payment] = $this->payment();
+        config([
+            'services.wave.api_key' => 'wave-api-key-secret',
+            'services.wave.request_signing_secret' => 'request-signing-secret',
+            'services.wave.webhook_signing_secret' => 'webhook-signing-secret',
+            'services.wave.base_url' => 'https://api.wave.test',
+        ]);
+        $details = array_map(fn (int $index): array => [
+            'loc' => ['body', "field_{$index}"],
+            'msg' => "Validation message {$index}",
+            'type' => 'value_error',
+            'ctx' => ['token' => 'provider-token', 'phone' => '+221771234567'],
+            'signature' => 'provider-signature',
+            'success_url' => 'https://sensitive.test/success',
+        ], range(1, 12));
+        Log::spy();
+        Http::fake(['https://api.wave.test/v1/checkout/sessions' => Http::response([
+            'code' => 'request-validation-error',
+            'message' => 'Request invalid',
+            'details' => $details,
+            'authorization' => 'Bearer provider-token',
+        ], 400)]);
+
+        $result = app(WaveGateway::class)->initiate($payment, [
+            'payer_mobile' => '+221771234567',
+            'success_url' => 'https://barkeelu.test/success',
+            'error_url' => 'https://barkeelu.test/error',
+        ]);
+
+        $this->assertSame(ProviderInitiationStatus::NOT_SENT, $result->status);
+        Log::shouldHaveReceived('warning')->once()->withArgs(function (string $message, array $context): bool {
+            $this->assertSame('Wave checkout initiation rejected.', $message);
+            $this->assertSame('request-validation-error', $context['provider_error']['code']);
+            $this->assertSame('Request invalid', $context['provider_error']['message']);
+            $this->assertCount(10, $context['provider_error']['details']);
+            $this->assertSame(['loc' => ['body', 'field_1'], 'msg' => 'Validation message 1', 'type' => 'value_error'], $context['provider_error']['details'][0]);
+            $serialized = json_encode($context, JSON_THROW_ON_ERROR);
+            foreach (['wave-api-key-secret', 'request-signing-secret', 'webhook-signing-secret', 'provider-token', 'provider-signature', '+221771234567', 'sensitive.test', 'ctx'] as $value) {
+                $this->assertStringNotContainsString($value, $serialized);
+            }
+
+            return true;
+        });
+    }
+
+    public function test_401_is_not_sent_and_logs_the_rejection(): void
+    {
+        [$payment] = $this->payment();
+        config([
+            'services.wave.api_key' => 'wave-api-key',
+            'services.wave.request_signing_secret' => 'request-secret',
+            'services.wave.base_url' => 'https://api.wave.test',
+        ]);
+        Log::spy();
+        Http::fake(['https://api.wave.test/v1/checkout/sessions' => Http::response(['code' => 'unauthorized'], 401)]);
+
+        $result = app(WaveGateway::class)->initiate($payment, [
+            'payer_mobile' => '+221771234567',
+            'success_url' => 'https://barkeelu.test/success',
+            'error_url' => 'https://barkeelu.test/error',
+        ]);
+
+        $this->assertSame(ProviderInitiationStatus::NOT_SENT, $result->status);
+        Log::shouldHaveReceived('warning')->once()->withArgs(function (string $message, array $context): bool {
+            return $message === 'Wave checkout initiation rejected.'
+                && $context['http_status'] === 401
+                && $context['provider_error'] === ['code' => 'unauthorized'];
+        });
+    }
+
     public function test_webhook_signature_accepts_rotation_rejects_stale_and_deduplicates_official_wave_event_id(): void
     {
         config(['services.wave.webhook_signing_secret' => 'webhook-secret']);
@@ -389,8 +587,8 @@ class WaveCheckoutTest extends TestCase
         Queue::assertPushed(ProcessWebhookEvent::class, 2);
 
         $job = new ProcessWebhookEvent($event->id);
-        $job->handle(app(PaymentService::class));
-        $job->handle(app(PaymentService::class));
+        app()->call([$job, 'handle']);
+        app()->call([$job, 'handle']);
 
         $this->assertSame(WebhookEventStatus::PROCESSED, $event->refresh()->status);
         $this->assertSame(PaymentStatus::CREATED, $payment->refresh()->status);
