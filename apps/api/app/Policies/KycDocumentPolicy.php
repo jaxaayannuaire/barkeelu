@@ -9,6 +9,6 @@ class KycDocumentPolicy
 {
     public function view(User $user, KycDocument $document): bool
     {
-        return $user->can('compliance.manage') || $document->uploaded_by_user_id === $user->id;
+        return app(KycProfilePolicy::class)->view($user, $document->profile);
     }
 }

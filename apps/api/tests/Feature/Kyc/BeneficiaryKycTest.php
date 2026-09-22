@@ -77,12 +77,12 @@ class BeneficiaryKycTest extends TestCase
     {
         $user = User::factory()->create();
         $profile = app(CreateKycProfile::class)->create($user, $user);
-        $file = UploadedFile::fake()->createWithContent('identity.pdf', 'contenu-prive-kyc');
+        $file = UploadedFile::fake()->createWithContent('identity.pdf', "%PDF-1.4\ncontenu-prive-kyc");
         $document = app(UploadKycDocument::class)->upload($profile, $user, $file, KycDocumentType::IDENTITY_DOCUMENT);
 
         $disk = Storage::disk('kyc_private');
         $this->assertTrue($disk->exists($document->object_key));
-        $this->assertSame(hash('sha256', 'contenu-prive-kyc'), $document->sha256);
+        $this->assertSame(hash('sha256', "%PDF-1.4\ncontenu-prive-kyc"), $document->sha256);
         $this->assertSame('pdf', $document->metadata['extension']);
         $this->assertArrayNotHasKey('object_key', $document->toResource()->resolve());
         $this->assertArrayNotHasKey('storage_disk', $document->toResource()->resolve());
@@ -143,7 +143,7 @@ class BeneficiaryKycTest extends TestCase
         $response = $this->withToken($token)->postJson('/api/v1/kyc/profiles', ['user_id' => $user->id]);
         $response->assertCreated()->assertJsonPath('data.status', 'DRAFT');
         $profile = KycProfile::query()->where('user_id', $user->id)->firstOrFail();
-        $this->withToken($token)->post('/api/v1/kyc/profiles/'.$profile->public_id.'/documents', ['file' => UploadedFile::fake()->createWithContent('proof.pdf', 'preuve-kyc'), 'type' => 'IDENTITY_DOCUMENT'])
+        $this->withToken($token)->post('/api/v1/kyc/profiles/'.$profile->public_id.'/documents', ['file' => UploadedFile::fake()->createWithContent('proof.pdf', "%PDF-1.4\npreuve-kyc"), 'type' => 'IDENTITY_DOCUMENT'])
             ->assertCreated()
             ->assertJsonMissingPath('data.object_key')
             ->assertJsonMissingPath('data.storage_disk');

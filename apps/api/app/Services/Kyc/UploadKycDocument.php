@@ -6,6 +6,7 @@ use App\Enums\KycDocumentStatus;
 use App\Enums\KycDocumentType;
 use App\Enums\KycReviewActorType;
 use App\Enums\KycReviewEventType;
+use App\Exceptions\KycFileException;
 use App\Models\KycDocument;
 use App\Models\KycProfile;
 use App\Models\User;
@@ -13,23 +14,27 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use RuntimeException;
 use Throwable;
 
 class UploadKycDocument
 {
     private const DISK = 'kyc_private';
 
+    public function __construct(private readonly KycFileInspector $inspector) {}
+
     public function upload(KycProfile $profile, User $uploader, UploadedFile $file, KycDocumentType $type, ?string $issuedAt = null, ?string $expiresAt = null): KycDocument
     {
-        if (! $file->isValid()) {
-            throw new RuntimeException('Le fichier KYC téléversé est invalide.');
-        }
-
-        $extension = $file->guessExtension() ?: 'bin';
+        $extension = $this->inspector->inspect($file);
         $objectKey = 'profiles/'.$profile->public_id.'/'.Str::random(48).'.'.$extension;
         $disk = Storage::disk(self::DISK);
-        $disk->put($objectKey, $file->getContent());
+        $stream = fopen($file->getRealPath(), 'rb');
+        if ($stream === false || ! $disk->put($objectKey, $stream)) {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+            throw new KycFileException('KYC_FILE_STORAGE_FAILED', 'Stockage du fichier KYC impossible.', 500);
+        }
+        fclose($stream);
 
         try {
             return DB::transaction(function () use ($profile, $uploader, $type, $issuedAt, $expiresAt, $objectKey, $file, $extension): KycDocument {

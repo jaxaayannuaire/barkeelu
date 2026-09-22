@@ -28,7 +28,7 @@ class KycDocumentWorkflowTest extends TestCase
     {
         Storage::fake('kyc_private');
         [$profile, $uploader] = $this->profile();
-        $document = app(UploadKycDocument::class)->upload($profile, $uploader, UploadedFile::fake()->createWithContent('id.pdf', 'private'), KycDocumentType::IDENTITY_DOCUMENT);
+        $document = app(UploadKycDocument::class)->upload($profile, $uploader, UploadedFile::fake()->createWithContent('id.pdf', "%PDF-1.4\nprivate"), KycDocumentType::IDENTITY_DOCUMENT);
 
         $this->assertSame(KycDocumentStatus::UPLOADED, $document->status);
         $event = $document->reviewEvents()->sole();
@@ -47,7 +47,7 @@ class KycDocumentWorkflowTest extends TestCase
         });
         $this->expectException(\RuntimeException::class);
         try {
-            app(UploadKycDocument::class)->upload($profile, $uploader, UploadedFile::fake()->createWithContent('id.pdf', 'private'), KycDocumentType::IDENTITY_DOCUMENT);
+            app(UploadKycDocument::class)->upload($profile, $uploader, UploadedFile::fake()->createWithContent('id.pdf', "%PDF-1.4\nprivate"), KycDocumentType::IDENTITY_DOCUMENT);
         } finally {
             $this->assertDatabaseCount('kyc_documents', 0);
             $this->assertDatabaseCount('kyc_review_events', 1);

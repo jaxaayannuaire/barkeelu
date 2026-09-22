@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\BeneficiaryController;
 use App\Http\Controllers\Api\V1\CampaignController;
 use App\Http\Controllers\Api\V1\CheckoutSessionController;
 use App\Http\Controllers\Api\V1\DonationController;
+use App\Http\Controllers\Api\V1\KycDocumentController;
 use App\Http\Controllers\Api\V1\KycProfileController;
 use App\Http\Controllers\Api\V1\OrganizationController;
 use App\Http\Controllers\Api\V1\PaymentController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Api\V1\WebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::pattern('kycProfile', '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}');
+Route::pattern('kycDocument', '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}');
 
 Route::prefix('v1')->group(function (): void {
     Route::get('/health', fn () => response()->json(['status' => 'ok']));
@@ -61,6 +63,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('kyc/profiles', [KycProfileController::class, 'store']);
         Route::get('kyc/profiles/{kycProfile}', [KycProfileController::class, 'show']);
         Route::post('kyc/profiles/{kycProfile}/documents', [KycProfileController::class, 'storeDocument']);
+        Route::get('kyc/documents/{kycDocument}/download', [KycDocumentController::class, 'download']);
         Route::post('kyc/profiles/{kycProfile}/submit', [KycProfileController::class, 'submit']);
         Route::post('kyc/profiles/{kycProfile}/review/start', [KycProfileController::class, 'startReview']);
         Route::post('kyc/profiles/{kycProfile}/verify', [KycProfileController::class, 'verify']);

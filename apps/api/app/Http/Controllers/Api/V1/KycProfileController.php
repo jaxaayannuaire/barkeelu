@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\KycDocumentType;
 use App\Enums\KycRiskLevel;
+use App\Exceptions\KycFileException;
 use App\Exceptions\KycWorkflowException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\KycReasonRequest;
@@ -48,7 +49,11 @@ class KycProfileController extends Controller
     public function storeDocument(StoreKycDocumentRequest $request, KycProfile $kycProfile, UploadKycDocument $service): JsonResponse
     {
         Gate::authorize('uploadDocument', $kycProfile);
-        $document = $service->upload($kycProfile, $request->user(), $request->file('file'), KycDocumentType::from($request->validated('type')), $request->validated('issued_at'), $request->validated('expires_at'));
+        try {
+            $document = $service->upload($kycProfile, $request->user(), $request->file('file'), KycDocumentType::from($request->validated('type')), $request->validated('issued_at'), $request->validated('expires_at'));
+        } catch (KycFileException $exception) {
+            return response()->json(['message' => 'Fichier KYC invalide.', 'code' => $exception->errorCode], $exception->status);
+        }
 
         return (new KycDocumentResource($document))->response()->setStatusCode(201);
     }

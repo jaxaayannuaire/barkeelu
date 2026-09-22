@@ -16,7 +16,7 @@ class StoreKycDocumentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'file' => ['required', 'file', 'max:10240', 'mimetypes:application/pdf,image/jpeg,image/png'],
+            'file' => ['required', 'file', 'max:'.config('kyc.upload.max_size_kb', 5120), 'mimetypes:application/pdf,image/jpeg,image/png'],
             'type' => ['required', Rule::enum(KycDocumentType::class)],
             'issued_at' => ['nullable', 'date'],
             'expires_at' => ['nullable', 'date', 'after:issued_at'],
