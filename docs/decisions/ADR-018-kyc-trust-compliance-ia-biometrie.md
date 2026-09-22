@@ -1,7 +1,7 @@
 # ADR-018 — KYC, Trust, Compliance, IA et biométrie
 
 - **Projet** : Barkeelu.com
-- **Statut** : Proposé pour validation architecture, sécurité, finance et compliance
+- **Statut** : Accepté
 - **Date** : 2026-09-22
 - **Branche** : `develop`
 - **Portée** : cible KYC/Trust/Compliance, sans implémentation applicative
