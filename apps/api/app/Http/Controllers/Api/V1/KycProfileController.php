@@ -24,7 +24,7 @@ class KycProfileController extends Controller
     {
         $subject = $this->resolveSubject($request->validated());
         abort_unless(app(KycProfilePolicy::class)->create($request->user(), $subject), 403);
-        $profile = $service->create($subject);
+        $profile = $service->create($subject, $request->user());
 
         return (new KycProfileResource($profile))->response()->setStatusCode(201);
     }

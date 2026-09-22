@@ -6,6 +6,7 @@ use App\Enums\KycDocumentStatus;
 use App\Enums\KycDocumentType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class KycDocument extends Model
 {
@@ -34,5 +35,10 @@ class KycDocument extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by_user_id');
+    }
+
+    public function reviewEvents(): HasMany
+    {
+        return $this->hasMany(KycReviewEvent::class);
     }
 }

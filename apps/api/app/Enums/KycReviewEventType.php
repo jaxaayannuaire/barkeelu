@@ -1,0 +1,20 @@
+<?php
+
+namespace App\Enums;
+
+enum KycReviewEventType: string
+{
+    case PROFILE_CREATED = 'PROFILE_CREATED';
+    case SUBMITTED = 'SUBMITTED';
+    case REVIEW_STARTED = 'REVIEW_STARTED';
+    case VERIFIED = 'VERIFIED';
+    case REJECTED = 'REJECTED';
+    case SUSPENDED = 'SUSPENDED';
+    case EXPIRED = 'EXPIRED';
+    case REOPENED = 'REOPENED';
+    case RISK_CHANGED = 'RISK_CHANGED';
+    case DOCUMENT_UPLOADED = 'DOCUMENT_UPLOADED';
+    case DOCUMENT_ACCEPTED = 'DOCUMENT_ACCEPTED';
+    case DOCUMENT_REJECTED = 'DOCUMENT_REJECTED';
+    case DOCUMENT_EXPIRED = 'DOCUMENT_EXPIRED';
+}

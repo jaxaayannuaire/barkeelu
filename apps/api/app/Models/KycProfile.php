@@ -14,7 +14,16 @@ class KycProfile extends Model
 
     protected function casts(): array
     {
-        return ['status' => KycStatus::class, 'risk_level' => KycRiskLevel::class, 'submitted_at' => 'datetime', 'reviewed_at' => 'datetime'];
+        return [
+            'status' => KycStatus::class,
+            'risk_level' => KycRiskLevel::class,
+            'submitted_at' => 'datetime',
+            'review_started_at' => 'datetime',
+            'reviewed_at' => 'datetime',
+            'verified_at' => 'datetime',
+            'expires_at' => 'datetime',
+            'suspended_at' => 'datetime',
+        ];
     }
 
     public function getRouteKeyName(): string
@@ -42,8 +51,23 @@ class KycProfile extends Model
         return $this->belongsTo(User::class, 'reviewed_by_user_id');
     }
 
+    public function submitter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'submitted_by_user_id');
+    }
+
+    public function currentReviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'current_reviewer_user_id');
+    }
+
     public function documents(): HasMany
     {
         return $this->hasMany(KycDocument::class);
+    }
+
+    public function reviewEvents(): HasMany
+    {
+        return $this->hasMany(KycReviewEvent::class);
     }
 }

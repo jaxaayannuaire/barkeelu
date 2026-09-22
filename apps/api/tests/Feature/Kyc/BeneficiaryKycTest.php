@@ -54,9 +54,9 @@ class BeneficiaryKycTest extends TestCase
     {
         $user = User::factory()->create();
         $this->assertSame('pgsql', DB::connection()->getDriverName());
-        app(CreateKycProfile::class)->create($user);
+        app(CreateKycProfile::class)->create($user, $user);
         $this->expectException(QueryException::class);
-        app(CreateKycProfile::class)->create($user);
+        app(CreateKycProfile::class)->create($user, $user);
     }
 
     public function test_kyc_profile_rejects_zero_or_multiple_subjects_at_database_level(): void
@@ -76,7 +76,7 @@ class BeneficiaryKycTest extends TestCase
     public function test_private_document_storage_hash_and_resource_secrecy(): void
     {
         $user = User::factory()->create();
-        $profile = app(CreateKycProfile::class)->create($user);
+        $profile = app(CreateKycProfile::class)->create($user, $user);
         $file = UploadedFile::fake()->createWithContent('identity.pdf', 'contenu-prive-kyc');
         $document = app(UploadKycDocument::class)->upload($profile, $user, $file, KycDocumentType::IDENTITY_DOCUMENT);
 
@@ -95,7 +95,7 @@ class BeneficiaryKycTest extends TestCase
         $creator = User::factory()->create();
         $other = User::factory()->create();
         $beneficiary = $this->beneficiary($creator);
-        $profile = app(CreateKycProfile::class)->create($beneficiary);
+        $profile = app(CreateKycProfile::class)->create($beneficiary, $creator);
 
         $this->assertTrue(Gate::forUser($creator)->allows('view', $beneficiary));
         $this->assertFalse(Gate::forUser($other)->allows('view', $beneficiary));
