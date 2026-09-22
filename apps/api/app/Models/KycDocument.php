@@ -41,4 +41,9 @@ class KycDocument extends Model
     {
         return $this->hasMany(KycReviewEvent::class);
     }
+
+    public function assets(): HasMany
+    {
+        return $this->hasMany(KycDocumentAsset::class, 'kyc_document_id');
+    }
 }
