@@ -27,6 +27,48 @@ class KycProfilePolicy
         return $this->canManage($user, $profile);
     }
 
+    public function submit(User $user, KycProfile $profile): bool
+    {
+        return $this->canManage($user, $profile);
+    }
+
+    public function startReview(User $user, KycProfile $profile): bool
+    {
+        return $this->isCompliance($user);
+    }
+
+    public function verify(User $user, KycProfile $profile): bool
+    {
+        return $this->isCompliance($user);
+    }
+
+    public function reject(User $user, KycProfile $profile): bool
+    {
+        return $this->isCompliance($user);
+    }
+
+    public function suspend(User $user, KycProfile $profile): bool
+    {
+        return $this->isCompliance($user);
+    }
+
+    public function expire(User $user, KycProfile $profile): bool
+    {
+        return $this->isCompliance($user);
+    }
+
+    public function reopen(User $user, KycProfile $profile): bool
+    {
+        return $profile->status->value === 'SUSPENDED'
+            ? $this->isCompliance($user)
+            : $this->canManage($user, $profile);
+    }
+
+    public function changeRisk(User $user, KycProfile $profile): bool
+    {
+        return $this->isCompliance($user);
+    }
+
     private function canManage(User $user, KycProfile $profile): bool
     {
         if ($this->isCompliance($user)) {

@@ -14,6 +14,8 @@ use App\Http\Controllers\Api\V1\RefundController;
 use App\Http\Controllers\Api\V1\WebhookController;
 use Illuminate\Support\Facades\Route;
 
+Route::pattern('kycProfile', '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}');
+
 Route::prefix('v1')->group(function (): void {
     Route::get('/health', fn () => response()->json(['status' => 'ok']));
 
@@ -59,6 +61,14 @@ Route::prefix('v1')->group(function (): void {
         Route::post('kyc/profiles', [KycProfileController::class, 'store']);
         Route::get('kyc/profiles/{kycProfile}', [KycProfileController::class, 'show']);
         Route::post('kyc/profiles/{kycProfile}/documents', [KycProfileController::class, 'storeDocument']);
+        Route::post('kyc/profiles/{kycProfile}/submit', [KycProfileController::class, 'submit']);
+        Route::post('kyc/profiles/{kycProfile}/review/start', [KycProfileController::class, 'startReview']);
+        Route::post('kyc/profiles/{kycProfile}/verify', [KycProfileController::class, 'verify']);
+        Route::post('kyc/profiles/{kycProfile}/reject', [KycProfileController::class, 'reject']);
+        Route::post('kyc/profiles/{kycProfile}/suspend', [KycProfileController::class, 'suspend']);
+        Route::post('kyc/profiles/{kycProfile}/expire', [KycProfileController::class, 'expire']);
+        Route::post('kyc/profiles/{kycProfile}/reopen', [KycProfileController::class, 'reopen']);
+        Route::post('kyc/profiles/{kycProfile}/risk', [KycProfileController::class, 'changeRisk']);
 
         Route::get('/auth/user', fn () => response()->json([
             'id' => request()->user()->id,
