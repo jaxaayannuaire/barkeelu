@@ -3,13 +3,11 @@
 namespace App\Services\Kyc;
 
 use App\Enums\KycReviewActorType;
-use App\Enums\KycReviewEntityType;
 use App\Enums\KycReviewEventType;
 use App\Enums\KycRiskLevel;
 use App\Enums\KycStatus;
 use App\Models\Beneficiary;
 use App\Models\KycProfile;
-use App\Models\KycReviewEvent;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +15,8 @@ use Illuminate\Support\Str;
 
 class CreateKycProfile
 {
+    public function __construct(private readonly RecordKycReviewEvent $events) {}
+
     public function create(User|Organization|Beneficiary $subject, User $actor): KycProfile
     {
         return DB::transaction(function () use ($subject, $actor): KycProfile {
@@ -36,16 +36,14 @@ class CreateKycProfile
 
             $profile = KycProfile::query()->create($attributes);
 
-            KycReviewEvent::query()->create([
-                'public_id' => (string) Str::uuid(),
-                'entity_type' => KycReviewEntityType::PROFILE,
-                'kyc_profile_id' => $profile->id,
-                'event_type' => KycReviewEventType::PROFILE_CREATED,
-                'to_status' => KycStatus::DRAFT,
-                'risk_level_after' => KycRiskLevel::UNKNOWN,
-                'actor_type' => KycReviewActorType::HUMAN,
-                'actor_user_id' => $actor->id,
-            ]);
+            $this->events->record(
+                $profile,
+                KycReviewEventType::PROFILE_CREATED,
+                KycReviewActorType::HUMAN,
+                $actor,
+                toStatus: KycStatus::DRAFT,
+                riskAfter: KycRiskLevel::UNKNOWN,
+            );
 
             return $profile;
         });
