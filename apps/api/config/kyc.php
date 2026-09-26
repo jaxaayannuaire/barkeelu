@@ -16,6 +16,7 @@ return [
     ],
     'image' => [
         'optimization_enabled' => $configuredOptimization ?? true,
+        'queue' => env('KYC_IMAGE_QUEUE', 'kyc-media'),
         'webp_quality' => is_int($configuredQuality) && $configuredQuality >= 1 && $configuredQuality <= 100 ? $configuredQuality : 88,
         'max_dimension' => is_int($configuredDimension) && $configuredDimension >= 320 && $configuredDimension <= 6000 ? $configuredDimension : 2400,
         'max_input_pixels' => is_int($configuredPixels) && $configuredPixels >= 1_000_000 && $configuredPixels <= 100_000_000 ? $configuredPixels : 50_000_000,

@@ -20,7 +20,10 @@ class UploadKycDocument
 {
     private const DISK = 'kyc_private';
 
-    public function __construct(private readonly KycFileInspector $inspector) {}
+    public function __construct(
+        private readonly KycFileInspector $inspector,
+        private readonly KycImageDerivativeScheduler $scheduler,
+    ) {}
 
     public function upload(KycProfile $profile, User $uploader, UploadedFile $file, KycDocumentType $type, ?string $issuedAt = null, ?string $expiresAt = null): KycDocument
     {
@@ -37,7 +40,7 @@ class UploadKycDocument
         fclose($stream);
 
         try {
-            return DB::transaction(function () use ($profile, $uploader, $type, $issuedAt, $expiresAt, $objectKey, $file, $extension): KycDocument {
+            $document = DB::transaction(function () use ($profile, $uploader, $type, $issuedAt, $expiresAt, $objectKey, $file, $extension): KycDocument {
                 $document = KycDocument::query()->create([
                     'public_id' => (string) Str::uuid(),
                     'kyc_profile_id' => $profile->id,
@@ -63,5 +66,17 @@ class UploadKycDocument
 
             throw $exception;
         }
+
+        try {
+            $this->scheduler->schedule($document);
+        } catch (Throwable) {
+            logger()->error('Échec de planification du dérivé KYC.', [
+                'document_public_id' => $document->public_id,
+                'processor' => KycImageDerivativeProcessor::PROCESSOR,
+                'processor_version' => KycImageDerivativeProcessor::PROCESSOR_VERSION,
+            ]);
+        }
+
+        return $document;
     }
 }
