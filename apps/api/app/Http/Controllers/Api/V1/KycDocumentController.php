@@ -37,6 +37,7 @@ class KycDocumentController extends Controller
             'application/pdf' => 'pdf',
             'image/jpeg' => 'jpg',
             'image/png' => 'png',
+            'image/webp' => 'webp',
             default => 'bin',
         };
     }

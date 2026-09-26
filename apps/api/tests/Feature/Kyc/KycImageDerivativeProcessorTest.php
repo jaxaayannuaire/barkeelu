@@ -49,6 +49,23 @@ class KycImageDerivativeProcessorTest extends TestCase
         $this->assertSame('image/webp', $asset->mimeType);
     }
 
+    public function test_webp_is_resized_to_webp_without_master_mutation(): void
+    {
+        Storage::fake('kyc_private');
+        config()->set('kyc.image.max_dimension', 2400);
+        [$document, $master] = $this->document($this->imageBytes('webp', 2600, 1300), 'image/webp');
+
+        $asset = app(KycImageDerivativeProcessor::class)->generate($document, 'kyc_private', 'derivatives/webp.webp');
+        $output = Storage::disk('kyc_private')->get($asset->objectKey);
+
+        $this->assertSame([2400, 1200], [$asset->width, $asset->height]);
+        $this->assertSame('image/webp', $asset->mimeType);
+        $this->assertSame('RIFF', substr($output, 0, 4));
+        $this->assertSame('WEBP', substr($output, 8, 4));
+        $this->assertSame($master, Storage::disk('kyc_private')->get($document->object_key));
+        $this->assertSame(hash('sha256', $output), $asset->sha256);
+    }
+
     public function test_jpeg_exif_orientation_is_applied(): void
     {
         Storage::fake('kyc_private');
@@ -161,7 +178,11 @@ class KycImageDerivativeProcessorTest extends TestCase
     {
         $user = User::factory()->create();
         $profile = app(CreateKycProfile::class)->create($user, $user);
-        $key = 'profiles/'.$profile->public_id.'/master.'.($mime === 'image/png' ? 'png' : 'jpg');
+        $key = 'profiles/'.$profile->public_id.'/master.'.match ($mime) {
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            default => 'jpg',
+        };
         Storage::disk('kyc_private')->put($key, $bytes);
         $document = KycDocument::query()->create([
             'public_id' => (string) Str::uuid(),
@@ -184,7 +205,11 @@ class KycImageDerivativeProcessorTest extends TestCase
         $image = imagecreatetruecolor($width, $height);
         imagefill($image, 0, 0, imagecolorallocate($image, 30, 80, 140));
         ob_start();
-        $format === 'png' ? imagepng($image) : imagejpeg($image, null, 92);
+        match ($format) {
+            'png' => imagepng($image),
+            'webp' => imagewebp($image, null, 88),
+            default => imagejpeg($image, null, 92),
+        };
         $bytes = (string) ob_get_clean();
         imagedestroy($image);
 

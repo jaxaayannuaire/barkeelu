@@ -141,6 +141,30 @@ class KycImageDerivativeQueueTest extends TestCase
         Storage::disk('kyc_private')->assertExists($document->object_key);
     }
 
+    public function test_webp_upload_preserves_master_bytes_and_schedules_optimized_asset(): void
+    {
+        Queue::fake();
+        Storage::fake('kyc_private');
+        [$profile, $user] = $this->profile();
+        $bytes = $this->imageBytes('webp');
+
+        $file = $this->uploadedFile('arbitrary.client-extension', $bytes);
+        $document = app(UploadKycDocument::class)->upload($profile, $user, $file, KycDocumentType::IDENTITY_DOCUMENT);
+
+        $this->assertSame('image/webp', $document->mime_type);
+        $this->assertSame('webp', $document->metadata['extension']);
+        $this->assertStringEndsWith('.webp', $document->object_key);
+        $this->assertSame(hash('sha256', $bytes), $document->sha256);
+        $this->assertSame(strlen($bytes), $document->size_bytes);
+        $this->assertSame($bytes, Storage::disk('kyc_private')->get($document->object_key));
+        $this->assertDatabaseHas('kyc_document_assets', [
+            'kyc_document_id' => $document->id,
+            'role' => KycDocumentAssetRole::OPTIMIZED->value,
+            'status' => KycDocumentAssetStatus::PENDING->value,
+        ]);
+        Queue::assertPushedOn('kyc-media', GenerateKycDocumentDerivativeJob::class);
+    }
+
     public function test_job_generates_ready_asset_and_preserves_master(): void
     {
         Storage::fake('kyc_private');
@@ -200,7 +224,15 @@ class KycImageDerivativeQueueTest extends TestCase
 
     private function imageDocument(string $mime = 'image/jpeg', ?string $bytes = null): array
     {
-        return $this->document($mime, 'profiles/test/master.'.($mime === 'image/png' ? 'png' : 'jpg'), $bytes ?? $this->imageBytes('jpeg'));
+        return $this->document($mime, 'profiles/test/master.'.match ($mime) {
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            default => 'jpg',
+        }, $bytes ?? $this->imageBytes(match ($mime) {
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            default => 'jpeg',
+        }));
     }
 
     private function document(string $mime, string $key, string $bytes): array
@@ -248,10 +280,22 @@ class KycImageDerivativeQueueTest extends TestCase
         $image = imagecreatetruecolor(40, 20);
         imagefill($image, 0, 0, imagecolorallocate($image, 30, 80, 140));
         ob_start();
-        $format === 'png' ? imagepng($image) : imagejpeg($image, null, 92);
+        match ($format) {
+            'png' => imagepng($image),
+            'webp' => imagewebp($image, null, 88),
+            default => imagejpeg($image, null, 92),
+        };
         $bytes = (string) ob_get_clean();
         imagedestroy($image);
 
         return $bytes;
+    }
+
+    private function uploadedFile(string $name, string $bytes): UploadedFile
+    {
+        $path = tempnam(sys_get_temp_dir(), 'barkeelu-upload-');
+        file_put_contents($path, $bytes);
+
+        return new UploadedFile($path, $name, null, UPLOAD_ERR_OK, true);
     }
 }

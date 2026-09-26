@@ -18,7 +18,7 @@ class KycImageDerivativeScheduler
             return null;
         }
 
-        if (! in_array($document->mime_type, ['image/jpeg', 'image/png'], true)) {
+        if (! in_array($document->mime_type, ['image/jpeg', 'image/png', 'image/webp'], true)) {
             return null;
         }
 

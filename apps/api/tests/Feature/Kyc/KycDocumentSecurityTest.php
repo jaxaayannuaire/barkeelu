@@ -54,6 +54,40 @@ class KycDocumentSecurityTest extends TestCase
         Storage::disk('kyc_private')->assertExists($document->object_key);
     }
 
+    public function test_valid_webp_uses_strict_signature_and_normalized_extension(): void
+    {
+        $inspector = app(KycFileInspector::class);
+        $bytes = $this->imageBytes('webp');
+
+        $this->assertSame('webp', $inspector->inspect($this->uploadedFile('client.bin', $bytes)));
+
+        foreach ([
+            'RIFF'.str_repeat('x', 20),
+            'xxxx'.substr($bytes, 4),
+            'RIFF'.substr($bytes, 4, 4).'NOPE'.substr($bytes, 12),
+            'RIFF',
+            'plain text',
+        ] as $invalid) {
+            try {
+                $inspector->inspect($this->uploadedFile('fake.webp', $invalid));
+                $this->fail('Invalid WebP was accepted.');
+            } catch (\Throwable $exception) {
+                $this->assertContains($exception->errorCode, ['KYC_FILE_TYPE_UNSUPPORTED', 'KYC_FILE_SIGNATURE_INVALID']);
+            }
+        }
+    }
+
+    public function test_webp_upload_size_uses_existing_five_megabyte_limit(): void
+    {
+        config()->set('kyc.upload.max_size_kb', 1);
+        try {
+            app(KycFileInspector::class)->inspect(UploadedFile::fake()->createWithContent('large.webp', $this->imageBytes('webp').str_repeat('x', 2048)));
+            $this->fail('Oversized WebP was accepted.');
+        } catch (\Throwable $exception) {
+            $this->assertSame('KYC_FILE_TOO_LARGE', $exception->errorCode);
+        }
+    }
+
     public function test_disguised_files_are_rejected(): void
     {
         $inspector = app(KycFileInspector::class);
@@ -111,5 +145,28 @@ class KycDocumentSecurityTest extends TestCase
         $user->givePermissionTo('compliance.manage');
 
         return $user;
+    }
+
+    private function imageBytes(string $format): string
+    {
+        $image = imagecreatetruecolor(40, 20);
+        imagefill($image, 0, 0, imagecolorallocate($image, 30, 80, 140));
+        ob_start();
+        match ($format) {
+            'webp' => imagewebp($image, null, 88),
+            default => imagejpeg($image, null, 92),
+        };
+        $bytes = (string) ob_get_clean();
+        imagedestroy($image);
+
+        return $bytes;
+    }
+
+    private function uploadedFile(string $name, string $bytes): UploadedFile
+    {
+        $path = tempnam(sys_get_temp_dir(), 'barkeelu-upload-');
+        file_put_contents($path, $bytes);
+
+        return new UploadedFile($path, $name, null, UPLOAD_ERR_OK, true);
     }
 }

@@ -31,7 +31,7 @@ final class KycImageDerivativeProcessor
             throw $this->error(KycImageProcessingErrorCode::STORAGE_FAILED, 'La destination ne peut pas remplacer le master.');
         }
 
-        if (! in_array($document->mime_type, ['image/jpeg', 'image/png'], true)) {
+        if (! in_array($document->mime_type, ['image/jpeg', 'image/png', 'image/webp'], true)) {
             throw $this->error(KycImageProcessingErrorCode::MASTER_UNSUPPORTED, 'Type de master image non supporté.');
         }
 
