@@ -18,6 +18,19 @@
 | Redis, queue Redis et Reverb infrastructure | Réalisé |
 | Identity / Organizations / Platform RBAC | Réalisé |
 | Beneficiaries / Representatives / KYC | Réalisé |
+| KYC profile workflow | Réalisé |
+| KYC document workflow | Réalisé |
+| KYC immutable review audit | Réalisé |
+| KYC private file security/download | Réalisé |
+| KYC image derivatives/WebP | Réalisé |
+| KYC PDF optimization | Planifié |
+| KYC antivirus/quarantine | Planifié |
+| KYC geolocation evidence | Planifié |
+| Payout KYC gating | Planifié |
+| Trust/Compliance avancé | Planifié |
+| OCR | Planifié |
+| IA compliance | Planifié |
+| Biométrie | Planifié |
 | Campaign core | Réalisé |
 | Fondation financière : ledger, frais, Outbox | Réalisé |
 | Donation / CheckoutSession / Payment / Provider accounts / Webhooks | Réalisé |
@@ -71,11 +84,16 @@ Wave privé si configuré.
 
 ## Phases suivantes
 
-1. KYC / Trust ;
-2. Payout opérateur ;
-3. Réconciliation opérationnelle ;
-4. Administration / modération ;
-5. API mobile Flutter.
+10A4C couvre uniquement le pipeline image documentaire C1 à C4. L'optimisation PDF et l'antivirus restent planifiés.
+
+1. 10A4D — preuve de localisation KYC (planifié, selon le phasage accepté) ;
+2. 10A5 — gating KYC des payouts ;
+3. 10A6 — Trust / Compliance ;
+4. 10A7 — OCR ;
+5. 10A8 — IA ;
+6. 10A9 — biométrie ;
+7. Administration / modération ;
+8. API mobile Flutter.
 
 ## Historique P0
 

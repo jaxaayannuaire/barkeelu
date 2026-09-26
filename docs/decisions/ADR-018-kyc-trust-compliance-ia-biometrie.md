@@ -27,6 +27,29 @@ scan antivirus, de gating Campaign/Payout, d'OCR, d'IA ou de biométrie.
 `User` et `Organization` est une dette de modèle à traiter lors de la phase
 d'implémentation, pas dans cet ADR.
 
+## État d’implémentation — 2026-09-26
+
+La section 1 décrit l’état du projet au moment de l’acceptation de cet ADR. Elle est conservée comme contexte historique. Depuis cette décision, les éléments suivants sont implémentés :
+
+- workflow profil ;
+- workflow document ;
+- audit immutable ;
+- séparation self-review ;
+- sécurité des fichiers ;
+- téléchargement privé ;
+- assets image ;
+- pipeline WebP asynchrone.
+
+Restent non implémentés ou futurs :
+
+- gating payout final ;
+- Trust Campaign avancé ;
+- OCR ;
+- IA ;
+- biométrie ;
+- preuve de localisation ;
+- antivirus.
+
 ## 2. Problème
 
 Un enum seul ne constitue ni un workflow, ni une décision auditée, ni une

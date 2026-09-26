@@ -103,6 +103,36 @@ testés. Webhook Tester Wave Business Portal et micro-transaction Wave contrôl�
 09C3 sont validés. L'activation production reste une décision de déploiement et
 d'exploitation distincte.
 
+## KYC / Compliance
+
+Un profil KYC stable est rattaché à un seul sujet : `User`, `Organization` ou `Beneficiary` (contrainte XOR). Le workflow `KycProfile` couvre la soumission, la revue compliance, la vérification, le rejet, la suspension, l'expiration et la réouverture. Une revue critique par le sujet concerné est interdite. Les transitions sont journalisées dans `kyc_review_events`, dont l'historique est immutable.
+
+Le workflow `KycDocument` couvre l'acceptation, le rejet et l'expiration. Les fichiers sont stockés sur un disque privé et leur téléchargement est contrôlé par Policy. La limite d'upload est configurable, avec une valeur par défaut de 5 MiB. Les formats MASTER actuellement acceptés sont PDF, JPEG, PNG et WebP. Le MIME est déterminé côté serveur, les signatures sont inspectées, le SHA-256 du MASTER est calculé côté serveur et les noms/paths ne contiennent pas de PII.
+
+### Pipeline médias KYC
+
+```text
+MASTER
+-> asset OPTIMIZED
+-> queue kyc-media
+-> image_webp/v1
+-> READY / FAILED
+```
+
+JPEG, PNG et WebP peuvent produire un dérivé WebP asynchrone. Le pipeline applique par défaut une qualité de 88, une dimension maximale de 2400 px, une limite source de 50 MP et aucun agrandissement. L'orientation JPEG est traitée. Le MASTER n'est jamais remplacé. L'asset logique est idempotent, les retries sont asynchrones et la queue média est dédiée.
+
+Un PDF est accepté comme MASTER mais n'est pas optimisé par le pipeline image. HEIC/HEIF ne sont pas supportés côté serveur. AVIF reste refusé à l'upload malgré une éventuelle capacité locale de GD. Le WebP animé ne fait pas encore l'objet d'un rejet dédié : c'est une dette connue.
+
+Référence technique : [Implémentation KYC 10A](docs/architecture/KYC_IMPLEMENTATION_10A.md).
+
+Exploitation indicative :
+
+```bash
+php artisan queue:work redis --queue=kyc-media
+```
+
+Le worker média doit être séparé des queues critiques de paiement et webhook. Redis et la queue ne sont pas autoritatifs : un échec de génération du dérivé ne supprime jamais le document ni le MASTER.
+
 ## Stack cible
 
 - Laravel 13 ;

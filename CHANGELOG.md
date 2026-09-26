@@ -1,5 +1,53 @@
 # Barkeelu — CHANGELOG
 
+## 2026-09-26 — KYC workflows et pipeline documentaire 10A3 / 10A4C
+
+### Ajouté
+
+- workflow complet `KycProfile` ;
+- événements de revue immutable ;
+- workflow `KycDocument` ;
+- téléchargement privé contrôlé ;
+- inspection serveur des fichiers ;
+- table `kyc_document_assets` ;
+- processor WebP ;
+- queue dédiée `kyc-media` ;
+- scheduling post-commit ;
+- retry et idempotence ;
+- support du WebP entrant.
+
+### Sécurité
+
+- limite de 5 MiB configurable ;
+- MIME déterminé côté serveur ;
+- inspection des magic bytes, dont la signature RIFF+WEBP ;
+- SHA-256 du MASTER ;
+- noms aléatoires ;
+- stockage privé ;
+- MASTER immutable ;
+- échec du dérivé non destructif.
+
+### Validation
+
+- 10A4C4 Security : 8 tests, 29 assertions ;
+- 10A4C4 Processor : 10 tests, 26 assertions ;
+- 10A4C4 Queue/upload/job : 10 tests, 57 assertions ;
+- suite KYC : 89 tests, 440 assertions ;
+- Organization/RBAC : 8 tests, 56 assertions.
+
+La full suite n'a pas été exécutée pour 10A4C4.
+
+### Limites
+
+- optimisation PDF non implémentée ;
+- antivirus non implémenté ;
+- HEIC/HEIF serveur non supporté ;
+- AVIF upload non supporté ;
+- détection WebP animé non implémentée ;
+- OCR, IA et biométrie non implémentés ;
+- localisation KYC non implémentée ;
+- gating payout non implémenté.
+
 ## 2026-09-22 — Phase 09C3 Wave réelle contrôlée
 
 ### Validé
